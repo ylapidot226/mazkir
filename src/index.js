@@ -17,6 +17,11 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files (landing page + admin)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Serve admin page at /admin
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
+});
+
 // Routes
 app.use('/webhook', webhookRoutes);
 app.use('/api/admin', adminRoutes);
