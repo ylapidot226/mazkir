@@ -78,6 +78,21 @@
       padding: 0.5rem 1rem;
     }
     .btn-block:hover { background: #B91C1C; }
+    .btn-unblock {
+      background: #2563EB;
+      color: #fff;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+    }
+    .btn-unblock:hover { background: #1D4ED8; }
+    .btn-delete {
+      background: transparent;
+      border: 1px solid rgba(220,38,38,0.4);
+      color: #F87171;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+    }
+    .btn-delete:hover { background: rgba(220,38,38,0.15); }
     .hidden { display: none !important; }
     .header {
       display: flex;
@@ -271,7 +286,10 @@
               <button class="btn btn-block" onclick="blockUser('${u.id}')">חסימה</button>
             ` : u.status === 'active' ? `
               <button class="btn btn-block" onclick="blockUser('${u.id}')">חסימה</button>
+            ` : u.status === 'blocked' ? `
+              <button class="btn btn-unblock" onclick="unblockUser('${u.id}')">ביטול חסימה</button>
             ` : ''}
+            <button class="btn btn-delete" onclick="deleteUser('${u.id}')">מחיקה</button>
           </div>
         </div>
       `).join('');
@@ -286,6 +304,19 @@
     async function blockUser(id) {
       if (!confirm('לחסום את המשתמש?')) return;
       await apiCall(`/api/admin/users/${id}/block`, 'POST');
+      await fetchStats();
+      loadUsers();
+    }
+
+    async function unblockUser(id) {
+      await apiCall(`/api/admin/users/${id}/unblock`, 'POST');
+      await fetchStats();
+      loadUsers();
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('למחוק את המשתמש? כל הנתונים שלו יימחקו!')) return;
+      await apiCall(`/api/admin/users/${id}`, 'DELETE');
       await fetchStats();
       loadUsers();
     }

@@ -87,6 +87,32 @@ router.post('/users/:id/block', requireAuth, async (req, res) => {
   }
 });
 
+// Unblock user (set back to active)
+router.post('/users/:id/unblock', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.activateUser(id);
+    logger.info('admin', 'User unblocked', { userId: id });
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('admin', 'Failed to unblock user', error);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+// Delete user
+router.delete('/users/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.deleteUser(id);
+    logger.info('admin', 'User deleted', { userId: id });
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('admin', 'Failed to delete user', error);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // Register from landing page
 router.post('/register', async (req, res) => {
   try {

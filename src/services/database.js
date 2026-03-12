@@ -61,6 +61,19 @@ async function blockUser(userId) {
   }
 }
 
+async function deleteUser(userId) {
+  const { error } = await supabase
+    .from('users')
+    .delete()
+    .eq('id', userId);
+
+  if (error) {
+    logger.error('database', 'Failed to delete user', error);
+    throw error;
+  }
+  logger.info('database', 'User deleted', { userId });
+}
+
 async function getPendingUsers() {
   const { data, error } = await supabase
     .from('users')
@@ -418,6 +431,7 @@ module.exports = {
   createUser,
   activateUser,
   blockUser,
+  deleteUser,
   getPendingUsers,
   getAllUsers,
   addEvent,
