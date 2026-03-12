@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מזכיר - העוזר החכם שלך בוואטסאפ</title>
+  <meta name="description" content="בוט וואטסאפ חכם שמנהל לך תזכורות, אירועים ומשימות בשפה טבעית בעברית">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #080808;
+      --accent: #7C3AED;
+      --accent-light: #A78BFA;
+      --accent-glow: rgba(124, 58, 237, 0.4);
+      --text: #F1F1F1;
+      --text-muted: #8B8B8B;
+      --glass-bg: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-border-hover: rgba(255, 255, 255, 0.15);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      direction: rtl;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Grain texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* Animated gradient background */
+    .bg-gradient {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .bg-gradient::before {
+      content: '';
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.15), transparent 70%);
+      top: -200px;
+      right: -100px;
+      animation: floatGrad1 20s ease-in-out infinite;
+    }
+    .bg-gradient::after {
+      content: '';
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
+      bottom: -100px;
+      left: -100px;
+      animation: floatGrad2 25s ease-in-out infinite;
+    }
+    @keyframes floatGrad1 {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(-80px, 80px); }
+    }
+    @keyframes floatGrad2 {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(60px, -60px); }
+    }
+
+    /* Cursor glow */
+    .cursor-glow {
+      position: fixed;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.08), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      transform: translate(-50%, -50%);
+      transition: left 0.3s ease, top 0.3s ease;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1rem 0;
+      background: rgba(8, 8, 8, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-light), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-cta {
+      padding: 0.5rem 1.2rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .nav-cta:hover { background: #6D28D9; transform: translateY(-1px); }
+
+    /* Hero */
+    .hero {
+      padding: 10rem 0 6rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: center;
+    }
+    .hero-content { position: relative; z-index: 2; }
+    .hero-badge {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 100px;
+      font-size: 0.85rem;
+      color: var(--accent-light);
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 5vw, 4.5rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 1.2rem;
+      background: linear-gradient(135deg, #fff 0%, var(--accent-light) 50%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-weight: 300;
+      max-width: 480px;
+      line-height: 1.7;
+    }
+    .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .btn-primary {
+      padding: 0.85rem 1.8rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
+    .btn-primary:hover::after { opacity: 1; }
+    .btn-outline {
+      padding: 0.85rem 1.8rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent-light); }
+
+    /* WhatsApp Mockup */
+    .wa-mockup {
+      background: #111B21;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.05);
+      max-width: 360px;
+      margin: 0 auto;
+    }
+    .wa-header {
+      background: #1F2C33;
+      padding: 0.8rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    .wa-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+    .wa-name { font-size: 0.95rem; font-weight: 600; color: #E9EDEF; }
+    .wa-status { font-size: 0.75rem; color: #8696A0; }
+    .wa-messages {
+      padding: 1rem;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      background: url("data:image/svg+xml,%3Csvg width='400' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='20' cy='20' r='1' fill='rgba(255,255,255,0.02)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='%230B141A'/%3E%3Crect width='100%25' height='100%25' fill='url(%23p)'/%3E%3C/svg%3E");
+    }
+    .wa-msg {
+      max-width: 85%;
+      padding: 0.5rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.4s ease;
+    }
+    .wa-msg.visible { opacity: 1; transform: translateY(0); }
+    .wa-msg.sent {
+      background: #005C4B;
+      color: #E9EDEF;
+      align-self: flex-end;
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 2px;
+    }
+    .wa-msg.received {
+      background: #1F2C33;
+      color: #E9EDEF;
+      align-self: flex-start;
+      border-bottom-right-radius: 8px;
+      border-bottom-left-radius: 2px;
+    }
+    .wa-msg .time {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.45);
+      text-align: left;
+      margin-top: 0.2rem;
+    }
+    .wa-typing {
+      align-self: flex-start;
+      background: #1F2C33;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      display: flex;
+      gap: 0.3rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .wa-typing.visible { opacity: 1; }
+    .wa-typing span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #8696A0;
+      animation: typingDot 1.4s infinite;
+    }
+    .wa-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .wa-typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingDot {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    /* Social Proof */
+    .social-proof {
+      padding: 3rem 0;
+      text-align: center;
+      border-top: 1px solid var(--glass-border);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .social-proof-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .avatars {
+      display: flex;
+      margin-left: 0.5rem;
+    }
+    .avatars span {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      margin-right: -8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+    .avatars span:nth-child(1) { background: linear-gradient(135deg, #7C3AED, #3B82F6); }
+    .avatars span:nth-child(2) { background: linear-gradient(135deg, #059669, #10B981); }
+    .avatars span:nth-child(3) { background: linear-gradient(135deg, #F59E0B, #EF4444); }
+    .avatars span:nth-child(4) { background: linear-gradient(135deg, #EC4899, #8B5CF6); }
+    .social-proof-text {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .social-proof-text strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .counter { font-variant-numeric: tabular-nums; }
+
+    /* Features */
+    .features {
+      padding: 6rem 0;
+    }
+    .section-label {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--accent-light);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 0.8rem;
+      font-weight: 600;
+    }
+    .section-title {
+      text-align: center;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      font-weight: 700;
+      margin-bottom: 3rem;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s;
+    }
+    .feature-card:hover {
+      border-color: var(--glass-border-hover);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), rgba(124, 58, 237, 0.3));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1.2rem;
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+    .feature-card h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.6rem;
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    /* How it works */
+    .how-it-works {
+      padding: 6rem 0;
+    }
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 3rem;
+      max-width: 700px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .steps::before {
+      content: '';
+      position: absolute;
+      right: 24px;
+      top: 48px;
+      bottom: 48px;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent), transparent);
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 50px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    .step-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--glass-bg);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--accent-light);
+      box-shadow: 0 0 20px var(--accent-glow);
+      position: relative;
+      z-index: 2;
+    }
+    .step-content h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .step-content p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      font-weight: 300;
+    }
+    .step-chat {
+      background: #111B21;
+      border-radius: 12px;
+      padding: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .step-chat .wa-msg {
+      opacity: 1;
+      transform: none;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.6rem;
+    }
+
+    /* CTA Section */
+    .cta-section {
+      padding: 6rem 0;
+    }
+    .cta-card {
+      max-width: 550px;
+      margin: 0 auto;
+      padding: 3rem;
+      border-radius: 20px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-card::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 22px;
+      padding: 2px;
+      background: conic-gradient(from var(--border-angle, 0deg), var(--accent), transparent 30%, var(--accent) 60%, transparent 90%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      animation: rotateBorder 4s linear infinite;
+    }
+    @property --border-angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+    @keyframes rotateBorder {
+      to { --border-angle: 360deg; }
+    }
+    .cta-card h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .cta-card .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-weight: 300;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+      position: relative;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: all 0.3s;
+      direction: rtl;
+    }
+    .form-group input::placeholder { color: #555; }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 0.95rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+      position: relative;
+    }
+    .submit-btn:hover { background: #6D28D9; transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .submit-btn .spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin: 0 auto;
+    }
+    .submit-btn.loading .btn-text { display: none; }
+    .submit-btn.loading .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .form-note {
+      color: #555;
+      font-size: 0.8rem;
+      margin-top: 1rem;
+    }
+    .form-success {
+      display: none;
+      padding: 1rem;
+      background: rgba(5, 150, 105, 0.15);
+      border: 1px solid rgba(5, 150, 105, 0.3);
+      border-radius: 12px;
+      color: #34D399;
+      margin-top: 1rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 2rem 0;
+      text-align: center;
+      border-top: 1px solid var(--glass-border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer .logo { font-size: 1.1rem; margin-bottom: 0.5rem; display: block; }
+
+    /* Animations */
+    .animate-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .animate-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Ripple effect */
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    .ripple-effect {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(0);
+      animation: rippleAnim 0.6s linear;
+      pointer-events: none;
+    }
+    @keyframes rippleAnim {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 8rem 0 4rem;
+        text-align: center;
+      }
+      .hero-subtitle { margin: 0 auto 2rem; }
+      .hero-buttons { justify-content: center; }
+      .wa-mockup { max-width: 320px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 40px 1fr; gap: 1rem; }
+      .steps::before { right: 19px; }
+      .cta-card { padding: 2rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-gradient"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
+
+<!-- Nav -->
+<nav>
+  <div class="container">
+    <div class="logo">מזכיר</div>
+    <button class="nav-cta ripple" onclick="scrollToSignup()">הצטרף עכשיו</button>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero container">
+  <div class="hero-content animate-in">
+    <div class="hero-badge">&#10022; המזכיר החכם שלך בוואטסאפ</div>
+    <h1>תפסיק לשכוח.<br>תתחיל לעשות.</h1>
+    <p class="hero-subtitle">שלח הודעה רגילה בעברית — המזכיר מבין, שומר ומתזכר אותך. בלי אפליקציות, בלי סיסמאות, הכל בוואטסאפ.</p>
+    <div class="hero-buttons">
+      <button class="btn-primary ripple" onclick="scrollToSignup()">התחל בחינם &larr;</button>
+      <button class="btn-outline ripple" onclick="scrollToHowItWorks()">איך זה עובד?</button>
+    </div>
+  </div>
+  <div class="animate-in" style="animation-delay: 0.2s">
+    <div class="wa-mockup" id="heroMockup">
+      <div class="wa-header">
+        <div class="wa-avatar">&#129302;</div>
+        <div>
+          <div class="wa-name">מזכיר</div>
+          <div class="wa-status">מקוון</div>
+        </div>
+      </div>
+      <div class="wa-messages" id="heroChat">
+        <div class="wa-typing" id="heroTyping"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Social Proof -->
+<section class="social-proof">
+  <div class="container">
+    <div class="social-proof-inner animate-in">
+      <div class="avatars">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="social-proof-text">
+        כבר <strong><span class="counter" data-target="200">0</span>+</strong> אנשים מנהלים את החיים שלהם עם מזכיר
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-label animate-in">פיצ'רים</div>
+    <h2 class="section-title animate-in">הכל במקום אחד, בשפה שלך</h2>
+    <div class="features-grid">
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128197;</div>
+        <h3>אירועים חכמים</h3>
+        <p>מבין תאריכים בשפה טבעית — "עוד שבועיים", "ביום שלישי הבא". שומר ומתזכר אוטומטית 24 שעות לפני.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128203;</div>
+        <h3>משימות ופרויקטים</h3>
+        <p>פתח קטגוריות, הוסף משימות, סמן כבוצע. מארגן הכל לפי נושאים שאתה מגדיר בעצמך.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128722;</div>
+        <h3>רשימות חיות</h3>
+        <p>קניות, מטלות, כל מה שצריך לזכור. פשוט כתוב מה חסר ותשאל כשתצטרך — הכל שמור.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="how-it-works" id="howItWorks">
+  <div class="container">
+    <div class="section-label animate-in">איך זה עובד</div>
+    <h2 class="section-title animate-in">שלושה צעדים פשוטים</h2>
+    <div class="steps">
+      <div class="step animate-in">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>שלח הודעה רגילה</h3>
+          <p>כתוב בדיוק כמו שאתה מדבר — בעברית, בלי פורמט מיוחד</p>
+          <div class="step-chat">
+            <div class="wa-msg sent">יש לי פגישה ביום חמישי ב-14:00 עם עו"ד</div>
+          </div>
+        </div>
+      </div>
+      <div class="step animate-in">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>המזכיר מבין ושומר</h3>
+          <p>AI חכם מזהה את הכוונה שלך ושומר בצורה מסודרת</p>
+          <div class="step-chat">
+            <div class="wa-msg received">&#9989; שמרתי! פגישה עם עו"ד ביום חמישי 14:00. אתזכר אותך יום לפני &#128276;</div>
+          </div>
+        </div>
+      </div>
+      <div class="step animate-in">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>מקבל תזכורות בזמן</h3>
+          <p>24 שעות לפני וביום עצמו — אף פעם לא תשכח</p>
+          <div class="step-chat">
+            <div class="wa-msg received">&#9200; תזכורת ליום מחר!<br>&#128197; פגישה עם עו"ד<br>&#128336; 14:00<br><br>אל תשכח! &#128522;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="signup">
+  <div class="container">
+    <div class="cta-card animate-in">
+      <h2>הצטרף לרשימת הממתינים</h2>
+      <p class="subtitle">תהיה מהראשונים להשתמש במזכיר</p>
+      <form id="signupForm" onsubmit="handleSignup(event)">
+        <div class="form-group">
+          <input type="text" id="nameInput" placeholder="השם שלך" required autocomplete="name">
+        </div>
+        <div class="form-group">
+          <input type="tel" id="phoneInput" placeholder="מספר טלפון (050-1234567)" required autocomplete="tel" dir="ltr" style="text-align: right;">
+        </div>
+        <button type="submit" class="submit-btn ripple" id="submitBtn">
+          <span class="btn-text">הצטרף עכשיו</span>
+          <div class="spinner"></div>
+        </button>
+      </form>
+      <div class="form-success" id="formSuccess"></div>
+      <p class="form-note">&#128274; פרטיך מאובטחים. לא תקבל ספאם.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <span class="logo">מזכיר</span>
+    <p>נבנה עם &#10084;&#65039; בישראל</p>
+  </div>
+</footer>
+
+<script>
+  // Cursor glow
+  const glow = document.getElementById('cursorGlow');
+  document.addEventListener('mousemove', (e) => {
+    glow.style.left = e.clientX + 'px';
+    glow.style.top = e.clientY + 'px';
+  });
+
+  // Intersection Observer for animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.animate-in').forEach((el) => observer.observe(el));
+
+  // Counter animation
+  const counterObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.dataset.target);
+        let current = 0;
+        const increment = target / 40;
+        const timer = setInterval(() => {
+          current += increment;
+          if (current >= target) {
+            el.textContent = target;
+            clearInterval(timer);
+          } else {
+            el.textContent = Math.floor(current);
+          }
+        }, 30);
+        counterObserver.unobserve(el);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  document.querySelectorAll('.counter').forEach((el) => counterObserver.observe(el));
+
+  // Ripple effect
+  document.querySelectorAll('.ripple').forEach((btn) => {
+    btn.addEventListener('click', function (e) {
+      const ripple = document.createElement('span');
+      ripple.classList.add('ripple-effect');
+      const rect = this.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+      this.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    });
+  });
+
+  // WhatsApp chat animation
+  const chatMessages = [
+    { type: 'sent', text: 'יש לי פגישה מחר בצהריים', delay: 500 },
+    { type: 'typing', delay: 1500 },
+    { type: 'received', text: '&#9989; שמרתי! פגישה מחר ב-12:00.\nאתזכר אותך מחר בבוקר &#128276;', delay: 2000 },
+    { type: 'sent', text: 'אני צריך חלב ולחם', delay: 3500 },
+    { type: 'typing', delay: 1500 },
+    { type: 'received', text: '&#128722; הוספתי לרשימת הקניות:\n- חלב\n- לחם', delay: 2000 },
+    { type: 'sent', text: 'מה האירועים שלי?', delay: 3000 },
+    { type: 'typing', delay: 1200 },
+    { type: 'received', text: '&#128197; האירועים הקרובים שלך:\n\n1. פגישה - מחר 12:00\n\nזה הכל! &#128522;', delay: 2000 },
+  ];
+
+  function runChatAnimation() {
+    const container = document.getElementById('heroChat');
+    const typing = document.getElementById('heroTyping');
+
+    // Clear previous messages
+    container.querySelectorAll('.wa-msg').forEach((m) => m.remove());
+    typing.classList.remove('visible');
+
+    let totalDelay = 0;
+
+    chatMessages.forEach((msg) => {
+      totalDelay += msg.delay;
+
+      if (msg.type === 'typing') {
+        setTimeout(() => { typing.classList.add('visible'); }, totalDelay);
+      } else {
+        setTimeout(() => {
+          typing.classList.remove('visible');
+          const div = document.createElement('div');
+          div.className = `wa-msg ${msg.type}`;
+          div.innerHTML = msg.text.replace(/\n/g, '<br>') + '<div class="time">&#10003;&#10003; ' + new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + '</div>';
+          container.insertBefore(div, typing);
+          requestAnimationFrame(() => div.classList.add('visible'));
+          container.scrollTop = container.scrollHeight;
+        }, totalDelay);
+      }
+    });
+
+    // Loop after all messages + pause
+    totalDelay += 4000;
+    setTimeout(runChatAnimation, totalDelay);
+  }
+
+  // Start animation when hero is visible
+  const heroObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      setTimeout(runChatAnimation, 800);
+      heroObserver.disconnect();
+    }
+  });
+  heroObserver.observe(document.getElementById('heroMockup'));
+
+  // Scroll functions
+  function scrollToSignup() {
+    document.getElementById('signup').scrollIntoView({ behavior: 'smooth' });
+  }
+  function scrollToHowItWorks() {
+    document.getElementById('howItWorks').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Form submit
+  async function handleSignup(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const success = document.getElementById('formSuccess');
+    const name = document.getElementById('nameInput').value.trim();
+    const phone = document.getElementById('phoneInput').value.trim();
+
+    if (!name || !phone) return;
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/admin/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone }),
+      });
+      const data = await res.json();
+      success.textContent = data.message || 'נרשמת בהצלחה!';
+      success.style.display = 'block';
+      document.getElementById('signupForm').reset();
+    } catch {
+      success.textContent = 'שגיאה בהרשמה, נסה שוב';
+      success.style.display = 'block';
+      success.style.borderColor = 'rgba(220,38,38,0.3)';
+      success.style.color = '#F87171';
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

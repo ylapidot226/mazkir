@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מזכיר - פאנל ניהול</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      direction: rtl;
+    }
+    .login-screen, .dashboard {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    .login-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .login-box {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .login-box h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .login-box p { color: #888; margin-bottom: 1.5rem; }
+    .login-box input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .login-box input:focus { outline: none; border-color: #7C3AED; }
+    .btn {
+      padding: 0.7rem 1.5rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+    .btn-primary {
+      background: #7C3AED;
+      color: #fff;
+      width: 100%;
+      padding: 0.9rem;
+    }
+    .btn-primary:hover { background: #6D28D9; }
+    .btn-approve {
+      background: #059669;
+      color: #fff;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+    }
+    .btn-approve:hover { background: #047857; }
+    .btn-block {
+      background: #DC2626;
+      color: #fff;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+    }
+    .btn-block:hover { background: #B91C1C; }
+    .hidden { display: none !important; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .header h1 { font-size: 1.5rem; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 1.2rem;
+      text-align: center;
+    }
+    .stat-card .number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #7C3AED;
+    }
+    .stat-card .label {
+      color: #888;
+      font-size: 0.85rem;
+      margin-top: 0.3rem;
+    }
+    .section-title {
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      color: #ccc;
+    }
+    .user-list { display: flex; flex-direction: column; gap: 0.7rem; }
+    .user-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .user-info .name { font-weight: 600; font-size: 1rem; }
+    .user-info .phone { color: #888; font-size: 0.85rem; direction: ltr; text-align: right; }
+    .user-info .date { color: #666; font-size: 0.8rem; }
+    .user-actions { display: flex; gap: 0.5rem; }
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-active { background: rgba(5,150,105,0.2); color: #34D399; }
+    .status-pending { background: rgba(245,158,11,0.2); color: #FBBF24; }
+    .status-blocked { background: rgba(220,38,38,0.2); color: #F87171; }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .tab {
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #aaa;
+      transition: all 0.2s;
+    }
+    .tab.active { background: #7C3AED; color: #fff; border-color: #7C3AED; }
+    .tab:hover { border-color: #7C3AED; }
+    .empty-state { text-align: center; padding: 3rem; color: #666; }
+    .logout-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #888;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .logout-btn:hover { border-color: #DC2626; color: #F87171; }
+  </style>
+</head>
+<body>
+  <!-- Login Screen -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-box">
+      <h1>מזכיר 🤖</h1>
+      <p>פאנל ניהול</p>
+      <input type="password" id="passwordInput" placeholder="סיסמה" onkeydown="if(event.key==='Enter')login()">
+      <button class="btn btn-primary" onclick="login()">כניסה</button>
+    </div>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="dashboard hidden" id="dashboard">
+    <div class="header">
+      <h1>מזכיר - פאנל ניהול 🤖</h1>
+      <button class="logout-btn" onclick="logout()">יציאה</button>
+    </div>
+
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="number" id="statTotal">0</div><div class="label">סה"כ משתמשים</div></div>
+      <div class="stat-card"><div class="number" id="statActive">0</div><div class="label">פעילים</div></div>
+      <div class="stat-card"><div class="number" id="statPending">0</div><div class="label">ממתינים</div></div>
+      <div class="stat-card"><div class="number" id="statMessages">0</div><div class="label">הודעות היום</div></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="pending" onclick="switchTab('pending')">ממתינים לאישור</div>
+      <div class="tab" data-tab="all" onclick="switchTab('all')">כל המשתמשים</div>
+    </div>
+
+    <div id="usersList" class="user-list"></div>
+  </div>
+
+  <script>
+    let password = '';
+    let currentTab = 'pending';
+
+    function login() {
+      password = document.getElementById('passwordInput').value;
+      if (!password) return;
+      fetchStats().then(() => {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        loadUsers();
+      }).catch(() => {
+        alert('סיסמה שגויה');
+      });
+    }
+
+    function logout() {
+      password = '';
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+      document.getElementById('passwordInput').value = '';
+    }
+
+    async function apiCall(url, method = 'GET', body = null) {
+      const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+      };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(url, opts);
+      if (!res.ok) throw new Error('API Error');
+      return res.json();
+    }
+
+    async function fetchStats() {
+      const stats = await apiCall('/api/admin/stats');
+      document.getElementById('statTotal').textContent = stats.totalUsers;
+      document.getElementById('statActive').textContent = stats.activeUsers;
+      document.getElementById('statPending').textContent = stats.pendingUsers;
+      document.getElementById('statMessages').textContent = stats.messagesToday;
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+      loadUsers();
+    }
+
+    async function loadUsers() {
+      const url = currentTab === 'pending' ? '/api/admin/users/pending' : '/api/admin/users';
+      const users = await apiCall(url);
+      const container = document.getElementById('usersList');
+
+      if (users.length === 0) {
+        container.innerHTML = '<div class="empty-state">אין משתמשים להצגה</div>';
+        return;
+      }
+
+      container.innerHTML = users.map(u => `
+        <div class="user-card">
+          <div class="user-info">
+            <div class="name">${u.name || 'ללא שם'} <span class="status-badge status-${u.status}">${u.status === 'active' ? 'פעיל' : u.status === 'pending' ? 'ממתין' : 'חסום'}</span></div>
+            <div class="phone">${u.phone_number.replace('@c.us', '')}</div>
+            <div class="date">${new Date(u.created_at).toLocaleDateString('he-IL')}</div>
+          </div>
+          <div class="user-actions">
+            ${u.status === 'pending' ? `
+              <button class="btn btn-approve" onclick="approveUser('${u.id}')">אישור</button>
+              <button class="btn btn-block" onclick="blockUser('${u.id}')">חסימה</button>
+            ` : u.status === 'active' ? `
+              <button class="btn btn-block" onclick="blockUser('${u.id}')">חסימה</button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function approveUser(id) {
+      await apiCall(`/api/admin/users/${id}/approve`, 'POST');
+      await fetchStats();
+      loadUsers();
+    }
+
+    async function blockUser(id) {
+      if (!confirm('לחסום את המשתמש?')) return;
+      await apiCall(`/api/admin/users/${id}/block`, 'POST');
+      await fetchStats();
+      loadUsers();
+    }
+
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+      if (!document.getElementById('dashboard').classList.contains('hidden')) {
+        fetchStats();
+        loadUsers();
+      }
+    }, 30000);
+  </script>
+</body>
+</html>
