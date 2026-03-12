@@ -75,7 +75,12 @@ async function processMessage(userMessage, conversationHistory = [], currentDate
     const parsed = JSON.parse(jsonStr);
     return parsed;
   } catch (error) {
-    logger.error('claude', 'Failed to process message', error);
+    logger.error('claude', 'Failed to process message', {
+      message: error.message,
+      status: error.status,
+      type: error.constructor.name,
+      details: JSON.stringify(error),
+    });
 
     // Return a fallback chat response
     return {
