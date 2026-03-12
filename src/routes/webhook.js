@@ -15,23 +15,23 @@ router.post('/whatsapp', async (req, res) => {
     const { sender, chatId, senderName, text } = parsed;
     logger.info('webhook', 'Message received', { sender, senderName, text: text.substring(0, 100) });
 
-    // Get or create user
-    let user = await db.getUser(sender);
+    // Check if user exists and is active
+    const user = await db.getUser(sender);
 
     if (!user) {
-      user = await db.createUser(sender, senderName);
+      // Not registered - send to website
       await greenApi.sendMessage(
         chatId,
-        `שלום ${senderName || ''} 👋\n\nתודה שפנית למזכיר!\nהבקשה שלך התקבלה ואנחנו נאשר אותה בהקדם.\nברגע שתאושר, תוכל להתחיל להשתמש בכל הפיצ'רים 🚀`
+        `שלום ${senderName || ''} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://mazkir.vercel.app\n\nנתראה שם! 😊`
       );
-      logger.info('webhook', 'New user registered', { sender, senderName });
+      logger.info('webhook', 'Unknown user directed to website', { sender });
       return res.status(200).json({ success: true });
     }
 
     if (user.status === 'pending') {
       await greenApi.sendMessage(
         chatId,
-        'הבקשה שלך עדיין ממתינה לאישור ⏳\nנעדכן אותך ברגע שתאושר!'
+        'הבקשה שלך עדיין ממתינה לאישור ⏳\nנעדכן אותך במייל ברגע שתאושר!'
       );
       return res.status(200).json({ success: true });
     }
