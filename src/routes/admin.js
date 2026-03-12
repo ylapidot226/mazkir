@@ -54,14 +54,16 @@ router.post('/users/:id/approve', requireAuth, async (req, res) => {
     const { id } = req.params;
     await db.activateUser(id);
 
-    // Get user to send welcome message
+    // Get user to send welcome email with WhatsApp link
     const users = await db.getAllUsers();
     const user = users.find((u) => u.id === id);
-    if (user) {
-      await greenApi.sendMessage(
-        user.phone_number,
-        `🎉 ברוכים הבאים למזכיר!\n\nהחשבון שלך אושר ואתה יכול להתחיל להשתמש.\n\nהנה כמה דוגמאות:\n📅 "יש לי פגישה מחר ב-10"\n📋 "הוסף משימה: לחדש ביטוח"\n🛒 "אני צריך חלב ולחם"\n❓ "מה האירועים שלי?"\n\nפשוט שלח הודעה רגילה ואני אבין! 😊`
-      );
+    if (user && user.email) {
+      try {
+        await sendWelcomeEmail(user.email, user.name || '');
+        logger.info('admin', 'Welcome email sent on approval', { email: user.email });
+      } catch (emailError) {
+        logger.error('admin', 'Failed to send welcome email', emailError);
+      }
     }
 
     logger.info('admin', 'User approved', { userId: id });
@@ -112,15 +114,7 @@ router.post('/register', async (req, res) => {
     await db.createUser(normalizedPhone, name, email);
     logger.info('admin', 'New registration from landing page', { name, phone: normalizedPhone, email });
 
-    // Send welcome email with WhatsApp link
-    try {
-      await sendWelcomeEmail(email, name);
-      logger.info('admin', 'Welcome email sent', { email });
-    } catch (emailError) {
-      logger.error('admin', 'Failed to send welcome email', emailError);
-    }
-
-    res.json({ success: true, message: 'נרשמת בהצלחה! שלחנו לך מייל עם קישור לוואטסאפ 📧' });
+    res.json({ success: true, message: 'נרשמת בהצלחה! נכנסת לרשימת ההמתנה ונעדכן אותך במייל כשהחשבון יאושר 🙌' });
   } catch (error) {
     logger.error('admin', 'Failed to register', error);
     res.status(500).json({ error: 'שגיאה בהרשמה, נסה שוב' });
