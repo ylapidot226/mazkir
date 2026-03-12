@@ -6,12 +6,11 @@ const db = require('../services/database');
 const logger = require('../utils/logger');
 
 router.post('/whatsapp', async (req, res) => {
-  // Always respond 200 quickly to Green API
-  res.status(200).json({ success: true });
-
   try {
     const parsed = greenApi.parseWebhook(req.body);
-    if (!parsed) return;
+    if (!parsed) {
+      return res.status(200).json({ success: true });
+    }
 
     const { sender, chatId, senderName, text } = parsed;
     logger.info('webhook', 'Message received', { sender, senderName, text: text.substring(0, 100) });
@@ -26,7 +25,7 @@ router.post('/whatsapp', async (req, res) => {
         `שלום ${senderName || ''} 👋\n\nתודה שפנית למזכיר!\nהבקשה שלך התקבלה ואנחנו נאשר אותה בהקדם.\nברגע שתאושר, תוכל להתחיל להשתמש בכל הפיצ'רים 🚀`
       );
       logger.info('webhook', 'New user registered', { sender, senderName });
-      return;
+      return res.status(200).json({ success: true });
     }
 
     if (user.status === 'pending') {
@@ -34,12 +33,12 @@ router.post('/whatsapp', async (req, res) => {
         chatId,
         'הבקשה שלך עדיין ממתינה לאישור ⏳\nנעדכן אותך ברגע שתאושר!'
       );
-      return;
+      return res.status(200).json({ success: true });
     }
 
     if (user.status === 'blocked') {
       logger.info('webhook', 'Blocked user tried to send message', { sender });
-      return;
+      return res.status(200).json({ success: true });
     }
 
     // Get conversation history for context
@@ -71,8 +70,11 @@ router.post('/whatsapp', async (req, res) => {
 
     // Save assistant response
     await db.saveMessage(user.id, 'assistant', aiResponse.response);
+
+    return res.status(200).json({ success: true });
   } catch (error) {
     logger.error('webhook', 'Error processing webhook', error);
+    return res.status(200).json({ success: true });
   }
 });
 
@@ -86,7 +88,6 @@ async function executeAction(userId, chatId, aiResponse) {
     switch (action) {
       case 'add_event':
         await db.addEvent(userId, content, datetime, location);
-        // If Claude provided a custom reminder time, add it
         if (reminder_datetime) {
           await db.addReminder(userId, `תזכורת: ${content}`, reminder_datetime);
         }
@@ -97,7 +98,6 @@ async function executeAction(userId, chatId, aiResponse) {
         break;
 
       case 'add_shopping':
-        // Support multiple items separated by commas
         const items = content.split(',').map((i) => i.trim()).filter(Boolean);
         for (const item of items) {
           await db.addShoppingItem(userId, item);
@@ -110,7 +110,6 @@ async function executeAction(userId, chatId, aiResponse) {
           await greenApi.sendMessage(chatId, 'אין לך אירועים קרובים 📅');
           return;
         }
-        // AI response already has the formatted list
         break;
       }
 
@@ -152,14 +151,12 @@ async function executeAction(userId, chatId, aiResponse) {
         break;
 
       case 'chat':
-        // Just send the response, no DB action needed
         break;
 
       default:
         logger.warn('webhook', 'Unknown action', { action });
     }
 
-    // Send the response to the user
     if (response) {
       await greenApi.sendMessage(chatId, response);
     }
