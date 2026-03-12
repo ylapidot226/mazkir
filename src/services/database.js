@@ -157,6 +157,56 @@ function getStartOfTodayIsrael() {
   return new Date(israelNow.getTime() - offsetMs);
 }
 
+async function deleteEventByContent(userId, content) {
+  const { data } = await supabase
+    .from('events')
+    .select('*')
+    .eq('user_id', userId)
+    .ilike('title', `%${content}%`);
+
+  if (data && data.length > 0) {
+    for (const event of data) {
+      await supabase.from('events').delete().eq('id', event.id);
+    }
+    logger.info('database', 'Events deleted', { userId, count: data.length });
+    return data.length;
+  }
+  return 0;
+}
+
+async function deleteAllEvents(userId) {
+  const { data } = await supabase
+    .from('events')
+    .select('id')
+    .eq('user_id', userId)
+    .gte('datetime', getStartOfTodayIsrael().toISOString());
+
+  if (data && data.length > 0) {
+    for (const event of data) {
+      await supabase.from('events').delete().eq('id', event.id);
+    }
+    logger.info('database', 'All events deleted', { userId, count: data.length });
+    return data.length;
+  }
+  return 0;
+}
+
+async function deleteTaskByContent(userId, content) {
+  const { data } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('completed', false)
+    .ilike('content', `%${content}%`);
+
+  if (data && data.length > 0) {
+    await supabase.from('tasks').delete().eq('id', data[0].id);
+    logger.info('database', 'Task deleted', { userId, content });
+    return data[0];
+  }
+  return null;
+}
+
 async function getEventsForReminder() {
   const now = new Date();
   const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -460,6 +510,9 @@ module.exports = {
   getAllUsers,
   addEvent,
   getUpcomingEvents,
+  deleteEventByContent,
+  deleteAllEvents,
+  deleteTaskByContent,
   getEventsForReminder,
   markReminderSent,
   addTask,

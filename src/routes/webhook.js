@@ -5,6 +5,22 @@ const claude = require('../services/claude');
 const db = require('../services/database');
 const logger = require('../utils/logger');
 
+// Hebrew date formatting that works on all platforms
+const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+
+function formatDateHe(isoString) {
+  const d = new Date(isoString);
+  // Convert to Israel time
+  const il = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const day = DAYS_HE[il.getDay()];
+  const date = il.getDate();
+  const month = MONTHS_HE[il.getMonth()];
+  const hours = String(il.getHours()).padStart(2, '0');
+  const minutes = String(il.getMinutes()).padStart(2, '0');
+  return { day, date, month, time: `${hours}:${minutes}`, full: `יום ${day}, ${date} ב${month} בשעה ${hours}:${minutes}` };
+}
+
 router.post('/whatsapp', async (req, res) => {
   try {
     const parsed = greenApi.parseWebhook(req.body);
@@ -19,7 +35,6 @@ router.post('/whatsapp', async (req, res) => {
     const user = await db.getUser(sender);
 
     if (!user) {
-      // Not registered - send to website
       await greenApi.sendMessage(
         chatId,
         `שלום ${senderName || ''} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://mazkir.vercel.app\n\nנתראה שם! 😊`
@@ -44,8 +59,7 @@ router.post('/whatsapp', async (req, res) => {
     // Get conversation history for context
     const history = await db.getRecentMessages(user.id, 4);
 
-    // Process with Claude - send only the user text, no context enrichment
-    // Context was causing the AI to re-trigger actions from previous conversations
+    // Process with AI
     const aiResponse = await claude.processMessage(text, history);
 
     // Save user message
@@ -67,18 +81,15 @@ router.post('/whatsapp', async (req, res) => {
 });
 
 /**
- * Execute the action returned by Claude
+ * Execute the action returned by AI
  */
 async function executeAction(userId, chatId, aiResponse) {
-  const { action, category, content, datetime, location, reminder_datetime, response } = aiResponse;
+  const { action, category, content, datetime, location, response } = aiResponse;
 
   try {
     switch (action) {
       case 'add_event':
         await db.addEvent(userId, content, datetime, location);
-        if (reminder_datetime) {
-          await db.addReminder(userId, `תזכורת: ${content}`, reminder_datetime);
-        }
         break;
 
       case 'add_task':
@@ -100,11 +111,9 @@ async function executeAction(userId, chatId, aiResponse) {
           msg = 'אין לך אירועים קרובים 📅';
         } else {
           const formatted = events.map((e) => {
-            const d = new Date(e.datetime);
-            const dateStr = d.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jerusalem' });
-            const timeStr = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+            const f = formatDateHe(e.datetime);
             const loc = e.location ? ` 📍 ${e.location}` : '';
-            return `• ${e.title} - ${dateStr} בשעה ${timeStr}${loc}`;
+            return `• ${e.title} - ${f.full}${loc}`;
           }).join('\n');
           msg = `📅 האירועים הקרובים שלך:\n\n${formatted}`;
         }
@@ -142,6 +151,42 @@ async function executeAction(userId, chatId, aiResponse) {
         } else {
           const formatted = list.map((s) => `• ${s.item}`).join('\n');
           msg = `🛒 רשימת הקניות:\n\n${formatted}`;
+        }
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
+      case 'delete_event': {
+        const count = await db.deleteEventByContent(userId, content);
+        let msg;
+        if (count > 0) {
+          msg = `🗑️ ${count === 1 ? 'האירוע נמחק' : `${count} אירועים נמחקו`} בהצלחה!`;
+        } else {
+          msg = 'לא מצאתי אירוע מתאים למחיקה 🤔';
+        }
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
+      case 'delete_all_events': {
+        const count = await db.deleteAllEvents(userId);
+        let msg;
+        if (count > 0) {
+          msg = `🗑️ כל ${count} האירועים נמחקו בהצלחה!`;
+        } else {
+          msg = 'אין אירועים למחיקה 📅';
+        }
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
+      case 'delete_task': {
+        const deleted = await db.deleteTaskByContent(userId, content);
+        let msg;
+        if (deleted) {
+          msg = `🗑️ המשימה "${deleted.content}" נמחקה!`;
+        } else {
+          msg = 'לא מצאתי משימה מתאימה למחיקה 🤔';
         }
         await greenApi.sendMessage(chatId, msg);
         return msg;

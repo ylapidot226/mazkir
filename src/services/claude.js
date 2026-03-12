@@ -12,19 +12,24 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - עוזר אישי בוואטסאפ.
 - אם המשתמש לא מבקש במפורש להוסיף/לשנות/למחוק/לשלוף → תמיד chat
 - גם אם בהיסטוריה יש הוספה קודמת, אל תחזור עליה! אישור = chat בלבד
 
-מתי להחזיר פעולה שאינה chat:
-- add_event: רק אם המשתמש מציין אירוע חדש עם זמן (לא חזרה על אירוע שכבר נוסף)
-- add_task: רק אם המשתמש מבקש במפורש להוסיף משימה חדשה
-- add_shopping: רק אם המשתמש מציין פריט חדש לקנייה
-- query_events/query_tasks/query_shopping: רק אם המשתמש שואל מה יש לו/מה ברשימה
-- complete_task/complete_shopping/clear_shopping: רק אם המשתמש מציין שסיים משהו
-- add_reminder: רק אם מבקש תזכורת חדשה
+פעולות זמינות:
+- add_event: אירוע חדש עם זמן
+- add_task: משימה חדשה (עם category)
+- add_shopping: פריט/ים לקניות
+- query_events / query_tasks / query_shopping: שליפת רשימות
+- complete_task / complete_shopping: סימון כבוצע
+- clear_shopping: ניקוי כל רשימת הקניות
+- delete_event: מחיקת אירוע ספציפי (content = חלק מהשם)
+- delete_all_events: מחיקת כל האירועים
+- delete_task: מחיקת משימה (content = חלק מהתוכן)
+- add_reminder: תזכורת חדשה
+- chat: שיחה רגילה
 
 פורמט JSON בלבד:
 {
-  "action": "add_event|add_task|add_shopping|query_events|query_tasks|query_shopping|complete_task|complete_shopping|clear_shopping|add_reminder|chat",
+  "action": "הפעולה",
   "category": "שם קטגוריה (רק למשימות)",
-  "content": "תוכן",
+  "content": "תוכן/שם האירוע",
   "datetime": "ISO 8601 עם +02:00/+03:00 לפי שעון ישראל",
   "location": "מיקום (אם צוין)",
   "response": "תשובה בעברית, חמה וידידותית עם אימוג'י"
@@ -34,7 +39,15 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - עוזר אישי בוואטסאפ.
  * Process a user message through OpenAI and get structured response
  */
 async function processMessage(userMessage, conversationHistory = [], currentDate = null) {
-  const now = currentDate || new Date().toLocaleString('en-IL', { timeZone: 'Asia/Jerusalem' });
+  const now = currentDate || new Date().toLocaleString('en-US', {
+    timeZone: 'Asia/Jerusalem',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
 
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
@@ -51,7 +64,7 @@ async function processMessage(userMessage, conversationHistory = [], currentDate
   try {
     const response = await client.chat.completions.create({
       model: config.openai.model,
-      max_tokens: 1024,
+      max_tokens: 512,
       messages,
       response_format: { type: 'json_object' },
     });
