@@ -6,9 +6,9 @@ module.exports = {
     token: process.env.GREEN_API_TOKEN,
     baseUrl: `https://api.green-api.com/waInstance${process.env.GREEN_API_INSTANCE_ID}`,
   },
-  anthropic: {
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    model: 'claude-sonnet-4-20250514',
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY,
+    model: 'gpt-4o-mini',
   },
   supabase: {
     url: process.env.SUPABASE_URL,

@@ -1,8 +1,8 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 const config = require('../config');
 const logger = require('../utils/logger');
 
-const client = new Anthropic({ apiKey: config.anthropic.apiKey });
+const client = new OpenAI({ apiKey: config.openai.apiKey });
 
 const SYSTEM_PROMPT = `אתה "מזכיר" - עוזר אישי חכם בוואטסאפ שמדבר עברית.
 התפקיד שלך: לנהל תזכורות, אירועים, משימות ורשימות קניות עבור המשתמש.
@@ -38,12 +38,13 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - עוזר אישי חכם בוואט
 - "שלום מה שלומך" → action: "chat"`;
 
 /**
- * Process a user message through Claude and get structured response
+ * Process a user message through OpenAI and get structured response
  */
 async function processMessage(userMessage, conversationHistory = [], currentDate = null) {
   const now = currentDate || new Date().toLocaleString('en-IL', { timeZone: 'Asia/Jerusalem' });
 
   const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
     ...conversationHistory.map((msg) => ({
       role: msg.role,
       content: msg.content,
@@ -55,34 +56,25 @@ async function processMessage(userMessage, conversationHistory = [], currentDate
   ];
 
   try {
-    const response = await client.messages.create({
-      model: config.anthropic.model,
+    const response = await client.chat.completions.create({
+      model: config.openai.model,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
       messages,
+      response_format: { type: 'json_object' },
     });
 
-    const responseText = response.content[0].text.trim();
-    logger.info('claude', 'Response received', { responseText: responseText.substring(0, 200) });
+    const responseText = response.choices[0].message.content.trim();
+    logger.info('openai', 'Response received', { responseText: responseText.substring(0, 200) });
 
-    // Parse JSON response - handle potential markdown code blocks
-    let jsonStr = responseText;
-    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim();
-    }
-
-    const parsed = JSON.parse(jsonStr);
+    const parsed = JSON.parse(responseText);
     return parsed;
   } catch (error) {
-    logger.error('claude', 'Failed to process message', {
+    logger.error('openai', 'Failed to process message', {
       message: error.message,
       status: error.status,
       type: error.constructor.name,
-      details: JSON.stringify(error),
     });
 
-    // Return a fallback chat response
     return {
       action: 'chat',
       response: 'סליחה, לא הצלחתי להבין. אפשר לנסות שוב? 🙏',
