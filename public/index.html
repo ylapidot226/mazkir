@@ -784,8 +784,30 @@
         <div class="form-group">
           <input type="email" id="emailInput" placeholder="כתובת מייל" required autocomplete="email" dir="ltr" style="text-align: right;">
         </div>
-        <div class="form-group">
-          <input type="tel" id="phoneInput" placeholder="מספר טלפון (050-1234567)" required autocomplete="tel" dir="ltr" style="text-align: right;">
+        <div class="form-group" style="display:flex;gap:0.5rem;direction:ltr;">
+          <select id="countryCode" style="width:110px;padding:0.9rem 0.5rem;background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);border-radius:12px;color:var(--text);font-size:0.9rem;font-family:inherit;">
+            <option value="972">IL +972</option>
+            <option value="1">US +1</option>
+            <option value="44">UK +44</option>
+            <option value="357">CY +357</option>
+            <option value="49">DE +49</option>
+            <option value="33">FR +33</option>
+            <option value="380">UA +380</option>
+            <option value="7">RU +7</option>
+            <option value="971">AE +971</option>
+            <option value="61">AU +61</option>
+            <option value="91">IN +91</option>
+            <option value="55">BR +55</option>
+            <option value="27">ZA +27</option>
+            <option value="52">MX +52</option>
+            <option value="34">ES +34</option>
+            <option value="39">IT +39</option>
+            <option value="31">NL +31</option>
+            <option value="46">SE +46</option>
+            <option value="41">CH +41</option>
+            <option value="32">BE +32</option>
+          </select>
+          <input type="tel" id="phoneInput" placeholder="מספר טלפון" required autocomplete="tel" dir="ltr" style="flex:1;text-align:left;">
         </div>
         <button type="submit" class="submit-btn ripple" id="submitBtn">
           <span class="btn-text">הצטרף לרשימה</span>
@@ -934,7 +956,10 @@
     const success = document.getElementById('formSuccess');
     const name = document.getElementById('nameInput').value.trim();
     const email = document.getElementById('emailInput').value.trim();
-    const phone = document.getElementById('phoneInput').value.trim();
+    const countryCode = document.getElementById('countryCode').value;
+    let phone = document.getElementById('phoneInput').value.trim().replace(/[\s\-()]/g, '');
+    if (phone.startsWith('0')) phone = phone.substring(1);
+    phone = countryCode + phone;
 
     if (!name || !email || !phone) return;
 
