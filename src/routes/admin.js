@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../services/database');
 const greenApi = require('../services/greenApi');
+const { sendWelcomeEmail } = require('../services/email');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -87,10 +88,10 @@ router.post('/users/:id/block', requireAuth, async (req, res) => {
 // Register from landing page
 router.post('/register', async (req, res) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, email } = req.body;
 
-    if (!phone || !name) {
-      return res.status(400).json({ error: 'שם וטלפון הם שדות חובה' });
+    if (!phone || !name || !email) {
+      return res.status(400).json({ error: 'שם, טלפון ומייל הם שדות חובה' });
     }
 
     // Normalize phone number - add Israel country code if needed
@@ -105,12 +106,21 @@ router.post('/register', async (req, res) => {
     // Check if user already exists
     const existing = await db.getUser(normalizedPhone);
     if (existing) {
-      return res.json({ success: true, message: 'כבר נרשמת! נעדכן אותך בקרוב.' });
+      return res.json({ success: true, message: 'כבר נרשמת! בדוק את המייל שלך לקישור לוואטסאפ.' });
     }
 
-    await db.createUser(normalizedPhone, name);
-    logger.info('admin', 'New registration from landing page', { name, phone: normalizedPhone });
-    res.json({ success: true, message: 'נרשמת בהצלחה! נאשר את החשבון שלך בהקדם.' });
+    await db.createUser(normalizedPhone, name, email);
+    logger.info('admin', 'New registration from landing page', { name, phone: normalizedPhone, email });
+
+    // Send welcome email with WhatsApp link
+    try {
+      await sendWelcomeEmail(email, name);
+      logger.info('admin', 'Welcome email sent', { email });
+    } catch (emailError) {
+      logger.error('admin', 'Failed to send welcome email', emailError);
+    }
+
+    res.json({ success: true, message: 'נרשמת בהצלחה! שלחנו לך מייל עם קישור לוואטסאפ 📧' });
   } catch (error) {
     logger.error('admin', 'Failed to register', error);
     res.status(500).json({ error: 'שגיאה בהרשמה, נסה שוב' });

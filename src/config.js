@@ -14,6 +14,13 @@ module.exports = {
     url: process.env.SUPABASE_URL,
     key: process.env.SUPABASE_KEY,
   },
+  resend: {
+    apiKey: process.env.RESEND_API_KEY,
+    fromEmail: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+  },
+  whatsapp: {
+    botNumber: process.env.WHATSAPP_BOT_NUMBER || '35799114512',
+  },
   admin: {
     password: process.env.ADMIN_PASSWORD,
   },

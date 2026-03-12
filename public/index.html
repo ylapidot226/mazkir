@@ -782,6 +782,9 @@
           <input type="text" id="nameInput" placeholder="השם שלך" required autocomplete="name">
         </div>
         <div class="form-group">
+          <input type="email" id="emailInput" placeholder="כתובת מייל" required autocomplete="email" dir="ltr" style="text-align: right;">
+        </div>
+        <div class="form-group">
           <input type="tel" id="phoneInput" placeholder="מספר טלפון (050-1234567)" required autocomplete="tel" dir="ltr" style="text-align: right;">
         </div>
         <button type="submit" class="submit-btn ripple" id="submitBtn">
@@ -930,9 +933,10 @@
     const btn = document.getElementById('submitBtn');
     const success = document.getElementById('formSuccess');
     const name = document.getElementById('nameInput').value.trim();
+    const email = document.getElementById('emailInput').value.trim();
     const phone = document.getElementById('phoneInput').value.trim();
 
-    if (!name || !phone) return;
+    if (!name || !email || !phone) return;
 
     btn.classList.add('loading');
     btn.disabled = true;
@@ -941,7 +945,7 @@
       const res = await fetch('/api/admin/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone }),
+        body: JSON.stringify({ name, email, phone }),
       });
       const data = await res.json();
       success.textContent = data.message || 'נרשמת בהצלחה!';

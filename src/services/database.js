@@ -19,10 +19,12 @@ async function getUser(phoneNumber) {
   return data;
 }
 
-async function createUser(phoneNumber, name) {
+async function createUser(phoneNumber, name, email) {
+  const insertData = { phone_number: phoneNumber, name: name || null };
+  if (email) insertData.email = email;
   const { data, error } = await supabase
     .from('users')
-    .insert({ phone_number: phoneNumber, name: name || null })
+    .insert(insertData)
     .select()
     .single();
 
