@@ -439,6 +439,29 @@ async function markReminderDone(reminderId) {
   if (error) logger.error('database', 'Failed to mark reminder done', error);
 }
 
+// ---- Poll Mappings (in-memory, polls expire after 24h) ----
+
+const pollMappings = new Map();
+
+function savePollMapping(userId, pollMessageId, tasks) {
+  const key = `${userId}:${pollMessageId}`;
+  pollMappings.set(key, {
+    tasks: tasks.map((t) => ({ id: t.id, content: t.content })),
+    createdAt: Date.now(),
+  });
+  // Clean up old mappings (older than 24h)
+  for (const [k, v] of pollMappings) {
+    if (Date.now() - v.createdAt > 24 * 60 * 60 * 1000) {
+      pollMappings.delete(k);
+    }
+  }
+}
+
+function getPollMapping(userId, pollMessageId) {
+  const key = `${userId}:${pollMessageId}`;
+  return pollMappings.get(key) || null;
+}
+
 // ---- Messages (conversation history) ----
 
 async function saveMessage(userId, role, content) {
@@ -527,6 +550,8 @@ module.exports = {
   addReminder,
   getDueReminders,
   markReminderDone,
+  savePollMapping,
+  getPollMapping,
   saveMessage,
   getRecentMessages,
   getStats,

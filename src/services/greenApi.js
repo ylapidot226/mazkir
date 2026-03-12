@@ -44,7 +44,7 @@ function parseWebhook(body) {
     return null;
   }
 
-  // Extract text message
+  // Extract message based on type
   const messageData = body.messageData;
   let text = null;
 
@@ -52,6 +52,18 @@ function parseWebhook(body) {
     text = messageData.textMessageData?.textMessage;
   } else if (messageData?.typeMessage === 'extendedTextMessage') {
     text = messageData.extendedTextMessageData?.text;
+  } else if (messageData?.typeMessage === 'pollUpdateMessage') {
+    // Poll vote received
+    const pollData = messageData.pollMessageData;
+    return {
+      sender,
+      chatId,
+      senderName,
+      text: null,
+      isPollUpdate: true,
+      pollStanzaId: pollData?.stanzaId,
+      pollVotes: pollData?.votes || [],
+    };
   }
 
   if (!text) {
@@ -67,7 +79,28 @@ function parseWebhook(body) {
   };
 }
 
+/**
+ * Send a WhatsApp poll via Green API
+ */
+async function sendPoll(chatId, question, options, multipleAnswers = true) {
+  try {
+    const url = `${API_BASE}/sendPoll/${TOKEN}`;
+    const response = await axios.post(url, {
+      chatId,
+      message: question,
+      options: options.map((opt) => ({ optionName: opt })),
+      multipleAnswers,
+    });
+    logger.info('greenApi', 'Poll sent', { chatId, messageId: response.data.idMessage });
+    return response.data;
+  } catch (error) {
+    logger.error('greenApi', 'Failed to send poll', error);
+    throw error;
+  }
+}
+
 module.exports = {
   sendMessage,
+  sendPoll,
   parseWebhook,
 };

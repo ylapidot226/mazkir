@@ -28,7 +28,18 @@ router.post('/whatsapp', async (req, res) => {
       return res.status(200).json({ success: true });
     }
 
-    const { sender, chatId, senderName, text } = parsed;
+    const { sender, chatId, senderName, text, isPollUpdate, pollStanzaId, pollVotes } = parsed;
+
+    // Handle poll vote updates (task completion via poll)
+    if (isPollUpdate) {
+      logger.info('webhook', 'Poll vote received', { sender, pollStanzaId });
+      const user = await db.getUser(sender);
+      if (user) {
+        await handlePollVote(user.id, chatId, pollStanzaId, pollVotes);
+      }
+      return res.status(200).json({ success: true });
+    }
+
     logger.info('webhook', 'Message received', { sender, senderName, text: text.substring(0, 100) });
 
     // Check if user exists and is active
@@ -37,7 +48,7 @@ router.post('/whatsapp', async (req, res) => {
     if (!user) {
       await greenApi.sendMessage(
         chatId,
-        `שלום ${senderName || ''} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://mazkir.vercel.app\n\nנתראה שם! 😊`
+        `שלום ${senderName || ''} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://maztary.com\n\nנתראה שם! 😊`
       );
       logger.info('webhook', 'Unknown user directed to website', { sender });
       return res.status(200).json({ success: true });
@@ -79,6 +90,45 @@ router.post('/whatsapp', async (req, res) => {
     return res.status(200).json({ success: true });
   }
 });
+
+/**
+ * Handle poll vote - mark selected tasks as completed
+ */
+async function handlePollVote(userId, chatId, pollStanzaId, votes) {
+  try {
+    const mapping = await db.getPollMapping(userId, pollStanzaId);
+    if (!mapping) {
+      logger.info('webhook', 'No poll mapping found', { pollStanzaId });
+      return;
+    }
+
+    // Find which options were voted for (have voters)
+    const votedOptions = votes
+      .filter((v) => v.optionVoters && v.optionVoters.length > 0)
+      .map((v) => v.optionName);
+
+    if (votedOptions.length === 0) return;
+
+    // Complete the matching tasks
+    let completedCount = 0;
+    for (const taskContent of votedOptions) {
+      const task = mapping.tasks.find((t) => t.content === taskContent);
+      if (task) {
+        await db.completeTask(userId, task.id);
+        completedCount++;
+      }
+    }
+
+    if (completedCount > 0) {
+      const msg = completedCount === 1
+        ? '✅ משימה אחת סומנה כבוצעה!'
+        : `✅ ${completedCount} משימות סומנו כבוצעות!`;
+      await greenApi.sendMessage(chatId, msg);
+    }
+  } catch (error) {
+    logger.error('webhook', 'Failed to handle poll vote', { error: error.message });
+  }
+}
 
 /**
  * Execute the action returned by AI
@@ -127,19 +177,20 @@ async function executeAction(userId, chatId, aiResponse) {
         if (tasks.length === 0) {
           const catMsg = category ? ` בקטגוריה "${category}"` : '';
           msg = `אין משימות פתוחות${catMsg} ✅`;
+          await greenApi.sendMessage(chatId, msg);
         } else {
-          const grouped = {};
-          for (const t of tasks) {
-            if (!grouped[t.category]) grouped[t.category] = [];
-            grouped[t.category].push(t.content);
+          // Send tasks as a poll so user can check off completed ones
+          const options = tasks.slice(0, 12).map((t) => t.content);
+          const question = category
+            ? `📋 משימות - ${category}:`
+            : '📋 המשימות שלך (סמן מה בוצע):';
+          const pollResult = await greenApi.sendPoll(chatId, question, options);
+          // Store poll ID to task mapping for handling votes
+          if (pollResult?.idMessage) {
+            await db.savePollMapping(userId, pollResult.idMessage, tasks.slice(0, 12));
           }
-          msg = '📋 המשימות שלך:\n';
-          for (const [cat, items] of Object.entries(grouped)) {
-            msg += `\n*${cat}:*\n`;
-            msg += items.map((item) => `• ${item}`).join('\n');
-          }
+          msg = question;
         }
-        await greenApi.sendMessage(chatId, msg);
         return msg;
       }
 
