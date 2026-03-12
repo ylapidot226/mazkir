@@ -44,32 +44,20 @@ router.post('/whatsapp', async (req, res) => {
     // Get conversation history for context
     const history = await db.getRecentMessages(user.id, 4);
 
-    // Get current context data for enriching AI response
-    const [events, categories, shoppingList] = await Promise.all([
-      db.getUpcomingEvents(user.id),
-      db.getCategories(user.id),
-      db.getShoppingList(user.id),
-    ]);
-
-    const contextInfo = `
-[הקשר נוכחי]
-אירועים קרובים: ${events.length > 0 ? events.map((e) => `${e.title} (${new Date(e.datetime).toLocaleDateString('he-IL')})`).join(', ') : 'אין'}
-קטגוריות משימות: ${categories.length > 0 ? categories.join(', ') : 'אין'}
-פריטים ברשימת קניות: ${shoppingList.length > 0 ? shoppingList.map((s) => s.item).join(', ') : 'ריקה'}
-`;
-
-    // Process with Claude
-    const enrichedMessage = `${contextInfo}\n${text}`;
-    const aiResponse = await claude.processMessage(enrichedMessage, history);
+    // Process with Claude - send only the user text, no context enrichment
+    // Context was causing the AI to re-trigger actions from previous conversations
+    const aiResponse = await claude.processMessage(text, history);
 
     // Save user message
     await db.saveMessage(user.id, 'user', text);
 
-    // Execute the action
-    await executeAction(user.id, chatId, aiResponse);
+    // Execute the action and get the response that was actually sent
+    const sentResponse = await executeAction(user.id, chatId, aiResponse);
 
-    // Save assistant response
-    await db.saveMessage(user.id, 'assistant', aiResponse.response);
+    // Save the actual response that was sent to the user
+    if (sentResponse) {
+      await db.saveMessage(user.id, 'assistant', sentResponse);
+    }
 
     return res.status(200).json({ success: true });
   } catch (error) {
@@ -97,39 +85,66 @@ async function executeAction(userId, chatId, aiResponse) {
         await db.addTask(userId, category || 'כללי', content);
         break;
 
-      case 'add_shopping':
+      case 'add_shopping': {
         const items = content.split(',').map((i) => i.trim()).filter(Boolean);
         for (const item of items) {
           await db.addShoppingItem(userId, item);
         }
         break;
+      }
 
       case 'query_events': {
         const events = await db.getUpcomingEvents(userId);
+        let msg;
         if (events.length === 0) {
-          await greenApi.sendMessage(chatId, 'אין לך אירועים קרובים 📅');
-          return;
+          msg = 'אין לך אירועים קרובים 📅';
+        } else {
+          const formatted = events.map((e) => {
+            const d = new Date(e.datetime);
+            const dateStr = d.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jerusalem' });
+            const timeStr = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jerusalem' });
+            const loc = e.location ? ` 📍 ${e.location}` : '';
+            return `• ${e.title} - ${dateStr} בשעה ${timeStr}${loc}`;
+          }).join('\n');
+          msg = `📅 האירועים הקרובים שלך:\n\n${formatted}`;
         }
-        break;
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
       }
 
       case 'query_tasks': {
         const tasks = await db.getTasks(userId, category);
+        let msg;
         if (tasks.length === 0) {
           const catMsg = category ? ` בקטגוריה "${category}"` : '';
-          await greenApi.sendMessage(chatId, `אין משימות פתוחות${catMsg} ✅`);
-          return;
+          msg = `אין משימות פתוחות${catMsg} ✅`;
+        } else {
+          const grouped = {};
+          for (const t of tasks) {
+            if (!grouped[t.category]) grouped[t.category] = [];
+            grouped[t.category].push(t.content);
+          }
+          msg = '📋 המשימות שלך:\n';
+          for (const [cat, items] of Object.entries(grouped)) {
+            msg += `\n*${cat}:*\n`;
+            msg += items.map((item) => `• ${item}`).join('\n');
+          }
         }
-        break;
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
       }
 
       case 'query_shopping': {
         const list = await db.getShoppingList(userId);
+        let msg;
         if (list.length === 0) {
-          await greenApi.sendMessage(chatId, 'רשימת הקניות ריקה! 🛒');
-          return;
+          msg = 'רשימת הקניות ריקה! 🛒';
+        } else {
+          const formatted = list.map((s) => `• ${s.item}`).join('\n');
+          msg = `🛒 רשימת הקניות:\n\n${formatted}`;
         }
-        break;
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
       }
 
       case 'complete_task':
@@ -160,9 +175,12 @@ async function executeAction(userId, chatId, aiResponse) {
     if (response) {
       await greenApi.sendMessage(chatId, response);
     }
+    return response || null;
   } catch (error) {
     logger.error('webhook', 'Failed to execute action', { action, error: error.message });
-    await greenApi.sendMessage(chatId, 'אופס, משהו השתבש 😅 אפשר לנסות שוב?');
+    const errMsg = 'אופס, משהו השתבש 😅 אפשר לנסות שוב?';
+    await greenApi.sendMessage(chatId, errMsg);
+    return errMsg;
   }
 }
 

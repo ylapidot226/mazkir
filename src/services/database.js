@@ -119,11 +119,17 @@ async function addEvent(userId, title, datetime, location) {
 }
 
 async function getUpcomingEvents(userId) {
+  // Include events from start of today (Israel time), not just from "now"
+  // This ensures events later today are included even if added moments ago
+  const startOfTodayISO = getStartOfTodayIsrael().toISOString();
+
+  logger.info('database', 'Querying upcoming events', { userId, since: startOfTodayISO });
+
   const { data, error } = await supabase
     .from('events')
     .select('*')
     .eq('user_id', userId)
-    .gte('datetime', new Date().toISOString())
+    .gte('datetime', startOfTodayISO)
     .order('datetime', { ascending: true });
 
   if (error) {
@@ -131,6 +137,24 @@ async function getUpcomingEvents(userId) {
     throw error;
   }
   return data || [];
+}
+
+/**
+ * Get start of today in Israel timezone as a UTC Date object
+ */
+function getStartOfTodayIsrael() {
+  // Get Israel offset by comparing UTC and Israel formatted times
+  const now = new Date();
+  const utcStr = now.toLocaleString('en-US', { timeZone: 'UTC', hour12: false });
+  const ilStr = now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem', hour12: false });
+  const offsetMs = new Date(ilStr) - new Date(utcStr);
+
+  // Shift now by Israel offset to get Israel local time, then zero out hours
+  const israelNow = new Date(now.getTime() + offsetMs);
+  israelNow.setUTCHours(0, 0, 0, 0);
+
+  // Shift back to UTC
+  return new Date(israelNow.getTime() - offsetMs);
 }
 
 async function getEventsForReminder() {
