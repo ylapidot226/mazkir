@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 const config = require('../config');
 const logger = require('../utils/logger');
 
-const client = new OpenAI({ apiKey: config.openai.apiKey });
+const client = new OpenAI({ apiKey: config.openai.apiKey, timeout: 8000 });
 
 const SYSTEM_PROMPT = `אתה "מזכיר" - עוזר אישי חכם בוואטסאפ שמדבר עברית.
 התפקיד שלך: לנהל תזכורות, אירועים, משימות ורשימות קניות עבור המשתמש.

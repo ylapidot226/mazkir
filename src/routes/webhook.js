@@ -42,7 +42,7 @@ router.post('/whatsapp', async (req, res) => {
     }
 
     // Get conversation history for context
-    const history = await db.getRecentMessages(user.id, 10);
+    const history = await db.getRecentMessages(user.id, 4);
 
     // Get current context data for enriching AI response
     const [events, categories, shoppingList] = await Promise.all([
