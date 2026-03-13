@@ -17,6 +17,7 @@ app.set('trust proxy', 1);
 app.use(helmet({
   contentSecurityPolicy: false, // Allow inline scripts for landing page
   crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false, // Allow WhatsApp/social crawlers to fetch og:image
 }));
 
 // CORS - restrict to own domain (#4)
