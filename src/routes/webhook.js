@@ -6,7 +6,6 @@ const claude = require('../services/claude');
 const db = require('../services/database');
 const config = require('../config');
 const logger = require('../utils/logger');
-const { checkHourlyReminders, checkCustomReminders } = require('../services/reminders');
 
 // Hebrew date formatting that works on all platforms
 const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -92,6 +91,20 @@ function isDuplicate(idMessage) {
   return false;
 }
 
+// Per-user processing lock to prevent race conditions
+const userLocks = new Map();
+async function withUserLock(userId, fn) {
+  while (userLocks.get(userId)) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  userLocks.set(userId, true);
+  try {
+    return await fn();
+  } finally {
+    userLocks.delete(userId);
+  }
+}
+
 router.post('/whatsapp', webhookLimiter, verifyWebhook, async (req, res) => {
   const idMessage = req.body?.messageData?.idMessage || req.body?.idMessage;
   if (isDuplicate(idMessage)) {
@@ -103,10 +116,6 @@ router.post('/whatsapp', webhookLimiter, verifyWebhook, async (req, res) => {
   } catch (error) {
     logger.error('webhook', 'Error processing webhook', { message: error.message, stack: error.stack });
   }
-
-  // Piggyback: check hourly reminders on every webhook (non-blocking)
-  checkHourlyReminders().catch(() => {});
-  checkCustomReminders().catch(() => {});
 
   return res.status(200).json({ success: true });
 });
@@ -151,21 +160,45 @@ async function processWebhook(body) {
 
   if (user.status === 'blocked') return;
 
-  // Get conversation history for context
-  const history = await db.getRecentMessages(user.id, 4);
+  // Process with per-user lock to prevent race conditions
+  await withUserLock(user.id, async () => {
+    // Get conversation history for context
+    const history = await db.getRecentMessages(user.id, 4);
 
-  // Process with AI
-  const aiResponse = await claude.processMessage(text, history);
+    // Process with AI
+    const aiResponse = await claude.processMessage(text, history);
 
-  // Save user message
-  await db.saveMessage(user.id, 'user', text);
+    // Save user message
+    await db.saveMessage(user.id, 'user', text);
 
-  // Execute the action and get the response that was actually sent
-  const sentResponse = await executeAction(user.id, chatId, aiResponse);
+    // Execute the action and get the response that was actually sent
+    const sentResponse = await executeAction(user.id, chatId, aiResponse);
 
-  // Save the actual response that was sent to the user
-  if (sentResponse) {
-    await db.saveMessage(user.id, 'assistant', sentResponse);
+    // Save condensed history for query actions to prevent AI context pollution
+    const historyMsg = getCondensedHistory(aiResponse.action, sentResponse);
+    if (historyMsg) {
+      await db.saveMessage(user.id, 'assistant', historyMsg);
+    }
+  });
+}
+
+/**
+ * Return a condensed version of the response for conversation history.
+ * Prevents full event/task lists from polluting the AI context.
+ */
+function getCondensedHistory(action, sentResponse) {
+  if (!sentResponse) return null;
+  switch (action) {
+    case 'query_events':
+      return '[הצגתי את האירועים הקרובים]';
+    case 'query_tasks':
+      return '[הצגתי את רשימת המשימות]';
+    case 'query_shopping':
+      return '[הצגתי את רשימת הקניות]';
+    case 'query_recurring':
+      return '[הצגתי את האירועים החוזרים]';
+    default:
+      return sentResponse;
   }
 }
 
@@ -412,10 +445,11 @@ async function executeAction(userId, chatId, aiResponse) {
         logger.warn('webhook', 'Unknown action', { action });
     }
 
-    if (response) {
-      await greenApi.sendMessage(chatId, response);
+    const finalResponse = response || (action !== 'chat' ? 'בוצע! ✅' : null);
+    if (finalResponse) {
+      await greenApi.sendMessage(chatId, finalResponse);
     }
-    return response || null;
+    return finalResponse || null;
   } catch (error) {
     logger.error('webhook', 'Failed to execute action', { action, error: error.message });
     const errMsg = 'אופס, משהו השתבש 😅 אפשר לנסות שוב?';

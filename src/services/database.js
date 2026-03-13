@@ -104,6 +104,20 @@ async function getAllUsers() {
 // ---- Events ----
 
 async function addEvent(userId, title, datetime, location) {
+  // Check for duplicate event (same user, title, datetime)
+  const { data: existing } = await supabase
+    .from('events')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('title', title)
+    .eq('datetime', datetime)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    logger.info('database', 'Duplicate event skipped', { userId, title, datetime });
+    return existing[0];
+  }
+
   const { data, error } = await supabase
     .from('events')
     .insert({ user_id: userId, title, datetime, location })

@@ -26,7 +26,7 @@ function formatDateFull(isoString) {
 }
 
 /**
- * Check if it's around 6:00 AM Israel time (within a 10-minute window)
+ * Check if it's 9:00 PM Israel time (within the hour window)
  */
 function isDailySummaryTime() {
   const now = new Date();
