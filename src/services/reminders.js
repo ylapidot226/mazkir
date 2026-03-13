@@ -32,9 +32,9 @@ function isDailySummaryTime() {
   const now = new Date();
   const ilTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
   const hours = ilTime.getHours();
-  const minutes = ilTime.getMinutes();
-  // 6:00-6:09 AM Israel time
-  return hours === 6 && minutes < 10;
+  // 21:00-21:59 Israel time (9 PM - summary for tomorrow)
+  // day_summary_sent flag prevents duplicate sends
+  return hours === 21;
 }
 
 // Map Hebrew day names to JS day numbers (0=Sunday)
@@ -99,17 +99,17 @@ async function generateRecurringEvents() {
 }
 
 /**
- * Send daily morning summary at 6:00 AM to all active users
+ * Send daily evening summary at 9:00 PM to all active users (for tomorrow)
  */
 async function sendDailySummary() {
   try {
     if (!isDailySummaryTime()) return;
 
-    const todayEvents = await db.getTodayEventsAllUsers();
+    const tomorrowEvents = await db.getTomorrowEventsAllUsers();
 
     // Group events by user
     const eventsByUser = {};
-    for (const event of todayEvents) {
+    for (const event of tomorrowEvents) {
       const phone = event.users?.phone_number;
       if (!phone) continue;
       if (!eventsByUser[phone]) eventsByUser[phone] = [];
@@ -117,7 +117,7 @@ async function sendDailySummary() {
     }
 
     for (const [phone, events] of Object.entries(eventsByUser)) {
-      // Check if we already sent today's summary (using the first event's day_summary_sent flag)
+      // Check if we already sent this summary
       const alreadySent = events.some((e) => e.day_summary_sent);
       if (alreadySent) continue;
 
@@ -127,11 +127,11 @@ async function sendDailySummary() {
         return `• ${time} - ${e.title}${loc}`;
       }).join('\n');
 
-      const message = `☀️ בוקר טוב! הנה מה שמחכה לך היום:\n\n${eventLines}\n\nיום מוצלח! 💪`;
+      const message = `🌙 ערב טוב! הנה מה שמחכה לך מחר:\n\n${eventLines}\n\nלילה טוב! 😴`;
 
       await greenApi.sendMessage(phone, message);
 
-      // Mark all today's events as summary sent
+      // Mark events as summary sent
       for (const event of events) {
         await db.markReminderSent(event.id, 'day_summary_sent');
       }

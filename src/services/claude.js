@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 const config = require('../config');
 const logger = require('../utils/logger');
 
-const client = new OpenAI({ apiKey: config.openai.apiKey, timeout: 8000 });
+const client = new OpenAI({ apiKey: config.openai.apiKey, timeout: 15000 });
 
 const SYSTEM_PROMPT = `אתה "מזכיר" - העוזר האישי הכי טוב בוואטסאפ. אתה מדבר עברית טבעית כמו חבר טוב - חם, קצר, ולעניין. אזור זמן: Asia/Jerusalem.
 
@@ -16,7 +16,7 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - העוזר האישי הכי טוב
 - אם המשתמש שואל שאלה שלא קשורה ליומן/משימות (מזג אוויר, בדיחות, שיעורי בית) - תגיד בקצרה שאתה מתמקד ביומן ותציע לעזור.
 
 על התזכורות - ככה מסביר למשתמשים:
-- כל בוקר ב-6:00 נשלח סיכום של כל מה שמתוכנן להיום
+- כל ערב ב-21:00 נשלח סיכום של כל מה שמתוכנן למחר
 - שעה לפני כל אירוע נשלחת תזכורת נוספת
 - אפשר גם להגדיר תזכורות מותאמות אישית
 
@@ -47,7 +47,8 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - העוזר האישי הכי טוב
 - add_task: משימה חדשה
 - add_shopping: פריט/ים לקניות
 - add_reminder: תזכורת עם שעה ספציפית
-- query_events / query_tasks / query_shopping: שליפת רשימות
+- query_events: שליפת אירועים (חובה: range = "today" / "week" / "all")
+- query_tasks / query_shopping: שליפת רשימות
 - complete_task / complete_shopping / clear_shopping: סימון כבוצע
 - delete_event / delete_all_events / delete_task: מחיקה
 - chat: שיחה רגילה / תשובה על שאלה
@@ -58,6 +59,7 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - העוזר האישי הכי טוב
   "category": "קטגוריה (רק למשימות)",
   "content": "תוכן/שם האירוע",
   "datetime": "ISO 8601 עם +02:00/+03:00 (לאירועים חד-פעמיים)",
+  "range": "today/week/all (רק ל-query_events: 'מה יש היום'→today, 'מה יש השבוע'→week, 'מה יש לי'→all)",
   "days": "מספרי ימים מופרדים בפסיק: 0=ראשון,1=שני,2=שלישי,3=רביעי,4=חמישי,5=שישי,6=שבת (רק ל-add_recurring)",
   "time": "שעה בפורמט HH:MM (רק ל-add_recurring)",
   "location": "מיקום (אם צוין)",
@@ -73,7 +75,7 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - העוזר האישי הכי טוב
 - "שמור ✅ הצרפתים מתחילים לאפות ביום רביעי"
 - "נתפס! 🔥 הדלקת אש מחר ב-9 בבוקר"
 - "הכנסתי ליומן 🙏 שיעור תורה כל יום ב-13:00"
-- "אני שולח לך כל בוקר ב-6 סיכום של היום, ועוד תזכורת שעה לפני כל אירוע 😊"
+- "אני שולח לך כל ערב ב-9 סיכום של מחר, ועוד תזכורת שעה לפני כל אירוע 😊"
 - "בטח! אני פה בשביל יומן, משימות, קניות ותזכורות. מה צריך?"`;
 
 /**

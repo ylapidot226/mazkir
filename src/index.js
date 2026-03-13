@@ -10,6 +10,9 @@ const { runAllReminders } = require('./services/reminders');
 
 const app = express();
 
+// Trust proxy (Vercel runs behind a reverse proxy)
+app.set('trust proxy', 1);
+
 // Security headers (#8)
 app.use(helmet({
   contentSecurityPolicy: false, // Allow inline scripts for landing page
@@ -24,8 +27,8 @@ app.use(cors({
   methods: ['GET', 'POST', 'DELETE'],
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // Serve static files (landing page + admin)
 app.use(express.static(path.join(__dirname, '..', 'public')));

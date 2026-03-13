@@ -673,7 +673,7 @@
   <div class="hero-content animate-in">
     <div class="hero-badge">&#10022; המזכיר החכם שלך בוואטסאפ</div>
     <h1>תפסיק לשכוח.<br>תתחיל לעשות.</h1>
-    <p class="hero-subtitle">דבר איתו כמו עם חבר — הוא מבין, שומר ומתזכר אותך. כל בוקר ב-6 מקבלים סיכום של היום, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
+    <p class="hero-subtitle">דבר איתו כמו עם חבר — הוא מבין, שומר ומתזכר אותך. כל ערב ב-9 מקבלים סיכום של מחר, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
     <div class="hero-buttons">
       <button class="btn-primary ripple" onclick="scrollToSignup()">התחל בחינם &larr;</button>
       <button class="btn-outline ripple" onclick="scrollToHowItWorks()">איך זה עובד?</button>
@@ -703,7 +703,7 @@
         <span></span><span></span><span></span><span></span>
       </div>
       <div class="social-proof-text">
-        כבר <strong><span class="counter" data-target="200">0</span>+</strong> אנשים מנהלים את החיים שלהם עם מזכיר
+        כבר <strong><span class="counter" data-target="2000">0</span>+</strong> אנשים מנהלים את החיים שלהם עם מזכיר
       </div>
     </div>
   </div>
@@ -718,7 +718,7 @@
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128197;</div>
         <h3>אירועים חכמים</h3>
-        <p>כתוב בשפה טבעית — "מחר ב-9 יש לי פגישה". סיכום יומי ב-6 בבוקר ותזכורת שעה לפני כל אירוע.</p>
+        <p>כתוב בשפה טבעית — "מחר ב-9 יש לי פגישה". סיכום יומי ב-9 בערב ותזכורת שעה לפני כל אירוע.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128260;</div>
@@ -728,7 +728,7 @@
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128276;</div>
         <h3>תזכורות חכמות</h3>
-        <p>כל בוקר ב-6:00 סיכום של כל מה שמחכה לך היום. שעה לפני כל אירוע — תזכורת נוספת. אפס שכחה.</p>
+        <p>כל ערב ב-9 סיכום של מה שמחכה לך מחר. שעה לפני כל אירוע — תזכורת נוספת. אפס שכחה.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128203;</div>
@@ -779,9 +779,9 @@
         <div class="step-number">3</div>
         <div class="step-content">
           <h3>מקבל תזכורות בזמן</h3>
-          <p>כל בוקר ב-6:00 סיכום של היום, ושעה לפני כל אירוע — אף פעם לא תשכח</p>
+          <p>כל ערב ב-9 סיכום של מחר, ושעה לפני כל אירוע — אף פעם לא תשכח</p>
           <div class="step-chat">
-            <div class="wa-msg received">&#9728;&#65039; בוקר טוב! הנה מה שמחכה לך היום:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>יום מוצלח! &#128170;</div>
+            <div class="wa-msg received">&#127769; ערב טוב! הנה מה שמחכה לך מחר:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>לילה טוב! &#128564;</div>
           </div>
         </div>
       </div>
@@ -906,15 +906,15 @@
 
   // WhatsApp chat animation
   const chatMessages = [
-    { type: 'sent', text: 'מחר ב-9 יש לי הדלקת אש בדליקטסו', delay: 500 },
+    { type: 'sent', text: 'מחר ב-10 יש לי פגישה עם רואה חשבון', delay: 500 },
     { type: 'typing', delay: 1200 },
-    { type: 'received', text: 'נתפס! &#128293; הדלקת אש מחר ב-9 בבוקר', delay: 1800 },
-    { type: 'sent', text: 'ביום רביעי הצרפתים מתחילים לאפות במאפיה', delay: 3000 },
+    { type: 'received', text: 'נתפס! &#9989; פגישה עם רואה חשבון מחר ב-10 בבוקר', delay: 1800 },
+    { type: 'sent', text: 'תוסיף לרשימת קניות חלב, לחם וביצים', delay: 3000 },
     { type: 'typing', delay: 1200 },
-    { type: 'received', text: 'שמור &#9989; הצרפתים מתחילים לאפות ביום רביעי', delay: 1800 },
-    { type: 'sent', text: 'כמה זמן לפני אתה מתזכר?', delay: 3000 },
+    { type: 'received', text: '&#128722; הוספתי 3 פריטים לרשימת הקניות!', delay: 1800 },
+    { type: 'sent', text: 'מה יש לי היום?', delay: 3000 },
     { type: 'typing', delay: 1000 },
-    { type: 'received', text: 'כל בוקר ב-6 אני שולח סיכום של היום, ושעה לפני כל אירוע תזכורת נוספת &#128522;', delay: 2000 },
+    { type: 'received', text: '&#128197; אירועים להיום:\n\n• 14:00 - שיעור יוגה\n• 18:30 - ארוחת ערב עם המשפחה\n\nיום מעולה! &#128170;', delay: 2000 },
   ];
 
   function runChatAnimation() {

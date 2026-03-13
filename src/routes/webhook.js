@@ -6,6 +6,7 @@ const claude = require('../services/claude');
 const db = require('../services/database');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { checkHourlyReminders, checkCustomReminders } = require('../services/reminders');
 
 // Hebrew date formatting that works on all platforms
 const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -75,74 +76,98 @@ function verifyWebhook(req, res, next) {
   return res.status(403).json({ error: 'Forbidden' });
 }
 
+// Deduplication: track recently processed messages to avoid duplicates
+const recentMessages = new Map();
+function isDuplicate(idMessage) {
+  if (!idMessage) return false;
+  if (recentMessages.has(idMessage)) return true;
+  recentMessages.set(idMessage, Date.now());
+  // Cleanup old entries (older than 5 minutes)
+  if (recentMessages.size > 200) {
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    for (const [k, v] of recentMessages) {
+      if (v < cutoff) recentMessages.delete(k);
+    }
+  }
+  return false;
+}
+
 router.post('/whatsapp', webhookLimiter, verifyWebhook, async (req, res) => {
-  try {
-    const parsed = greenApi.parseWebhook(req.body);
-    if (!parsed) {
-      return res.status(200).json({ success: true });
-    }
-
-    const { sender, chatId, senderName, text, isPollUpdate, pollStanzaId, pollVotes } = parsed;
-
-    // Handle poll vote updates (task completion via poll)
-    if (isPollUpdate) {
-      logger.info('webhook', 'Poll vote received', { sender, pollStanzaId });
-      const user = await db.getUser(sender);
-      if (user) {
-        await handlePollVote(user.id, chatId, pollStanzaId, pollVotes);
-      }
-      return res.status(200).json({ success: true });
-    }
-
-    logger.info('webhook', 'Message received', { sender, senderName });
-
-    // Check if user exists and is active
-    const user = await db.getUser(sender);
-
-    if (!user) {
-      await greenApi.sendMessage(
-        chatId,
-        `שלום ${(senderName || '').replace(/<[^>]*>/g, '')} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://maztary.com\n\nנתראה שם! 😊`
-      );
-      logger.info('webhook', 'Unknown user directed to website', { sender });
-      return res.status(200).json({ success: true });
-    }
-
-    if (user.status === 'pending') {
-      await greenApi.sendMessage(
-        chatId,
-        'הבקשה שלך עדיין ממתינה לאישור ⏳\nנעדכן אותך במייל ברגע שתאושר!'
-      );
-      return res.status(200).json({ success: true });
-    }
-
-    if (user.status === 'blocked') {
-      return res.status(200).json({ success: true });
-    }
-
-    // Get conversation history for context
-    const history = await db.getRecentMessages(user.id, 4);
-
-    // Process with AI
-    const aiResponse = await claude.processMessage(text, history);
-
-    // Save user message
-    await db.saveMessage(user.id, 'user', text);
-
-    // Execute the action and get the response that was actually sent
-    const sentResponse = await executeAction(user.id, chatId, aiResponse);
-
-    // Save the actual response that was sent to the user
-    if (sentResponse) {
-      await db.saveMessage(user.id, 'assistant', sentResponse);
-    }
-
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    logger.error('webhook', 'Error processing webhook', { message: error.message });
+  const idMessage = req.body?.messageData?.idMessage || req.body?.idMessage;
+  if (isDuplicate(idMessage)) {
+    logger.info('webhook', 'Duplicate message skipped', { idMessage });
     return res.status(200).json({ success: true });
   }
+  try {
+    await processWebhook(req.body);
+  } catch (error) {
+    logger.error('webhook', 'Error processing webhook', { message: error.message, stack: error.stack });
+  }
+
+  // Piggyback: check hourly reminders on every webhook (non-blocking)
+  checkHourlyReminders().catch(() => {});
+  checkCustomReminders().catch(() => {});
+
+  return res.status(200).json({ success: true });
 });
+
+async function processWebhook(body) {
+  const parsed = greenApi.parseWebhook(body);
+  if (!parsed) return;
+
+  const { sender, chatId, senderName, text, isPollUpdate, pollStanzaId, pollVotes } = parsed;
+
+  // Handle poll vote updates (task completion via poll)
+  if (isPollUpdate) {
+    logger.info('webhook', 'Poll vote received', { sender, pollStanzaId });
+    const user = await db.getUser(sender);
+    if (user) {
+      await handlePollVote(user.id, chatId, pollStanzaId, pollVotes);
+    }
+    return;
+  }
+
+  logger.info('webhook', 'Message received', { sender, senderName });
+
+  // Check if user exists and is active
+  const user = await db.getUser(sender);
+
+  if (!user) {
+    await greenApi.sendMessage(
+      chatId,
+      `שלום ${(senderName || '').replace(/<[^>]*>/g, '')} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://maztary.com\n\nנתראה שם! 😊`
+    );
+    logger.info('webhook', 'Unknown user directed to website', { sender });
+    return;
+  }
+
+  if (user.status === 'pending') {
+    await greenApi.sendMessage(
+      chatId,
+      'הבקשה שלך עדיין ממתינה לאישור ⏳\nנעדכן אותך במייל ברגע שתאושר!'
+    );
+    return;
+  }
+
+  if (user.status === 'blocked') return;
+
+  // Get conversation history for context
+  const history = await db.getRecentMessages(user.id, 4);
+
+  // Process with AI
+  const aiResponse = await claude.processMessage(text, history);
+
+  // Save user message
+  await db.saveMessage(user.id, 'user', text);
+
+  // Execute the action and get the response that was actually sent
+  const sentResponse = await executeAction(user.id, chatId, aiResponse);
+
+  // Save the actual response that was sent to the user
+  if (sentResponse) {
+    await db.saveMessage(user.id, 'assistant', sentResponse);
+  }
+}
 
 /**
  * Handle poll vote - mark selected tasks as completed
@@ -213,8 +238,15 @@ async function executeAction(userId, chatId, aiResponse) {
       }
 
       case 'query_events': {
-        const events = await db.getUpcomingEvents(userId);
+        // Determine date range from AI response
+        const range = aiResponse.range || 'all'; // 'today', 'week', 'all'
+        const daysAhead = range === 'today' ? 0 : range === 'week' ? 7 : null;
+        const events = await db.getUpcomingEvents(userId, daysAhead);
         const recurring = await db.getUserRecurringEvents(userId);
+
+        // Collect recurring event titles to detect duplicates
+        const recurringTitles = new Set(recurring.map((r) => r.title.trim().toLowerCase()));
+
         let msg = '';
 
         if (events.length > 0) {
@@ -223,10 +255,12 @@ async function executeAction(userId, chatId, aiResponse) {
             const loc = e.location ? ` 📍 ${e.location}` : '';
             return `• ${e.title} - ${f.full}${loc}`;
           }).join('\n');
-          msg += `📅 אירועים קרובים:\n\n${formatted}`;
+          const label = range === 'today' ? 'אירועים להיום' : range === 'week' ? 'אירועים השבוע' : 'אירועים קרובים';
+          msg += `📅 ${label}:\n\n${formatted}`;
         }
 
-        if (recurring.length > 0) {
+        // Only show recurring events if not asking about today specifically
+        if (range !== 'today' && recurring.length > 0) {
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
           const formatted = recurring.map((r) => {
             const days = r.days.split(',').map((d) => dayNames[parseInt(d.trim())] || d.trim()).join(', ');
@@ -236,7 +270,7 @@ async function executeAction(userId, chatId, aiResponse) {
           msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
         }
 
-        if (!msg) msg = 'אין לך אירועים 📅';
+        if (!msg) msg = range === 'today' ? 'אין לך אירועים היום 📅' : 'אין לך אירועים 📅';
         await greenApi.sendMessage(chatId, msg);
         return msg;
       }

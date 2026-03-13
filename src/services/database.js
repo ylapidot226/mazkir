@@ -118,19 +118,25 @@ async function addEvent(userId, title, datetime, location) {
   return data;
 }
 
-async function getUpcomingEvents(userId) {
+async function getUpcomingEvents(userId, daysAhead = null) {
   // Include events from start of today (Israel time), not just from "now"
-  // This ensures events later today are included even if added moments ago
   const startOfTodayISO = getStartOfTodayIsrael().toISOString();
 
-  logger.info('database', 'Querying upcoming events', { userId, since: startOfTodayISO });
-
-  const { data, error } = await supabase
+  let query = supabase
     .from('events')
     .select('*')
     .eq('user_id', userId)
-    .gte('datetime', startOfTodayISO)
-    .order('datetime', { ascending: true });
+    .gte('datetime', startOfTodayISO);
+
+  // If daysAhead specified, limit the range (0 = today only, 7 = this week, etc.)
+  if (daysAhead !== null) {
+    const endDate = new Date(getStartOfTodayIsrael().getTime() + (daysAhead + 1) * 24 * 60 * 60 * 1000);
+    query = query.lt('datetime', endDate.toISOString());
+  }
+
+  query = query.order('datetime', { ascending: true }).limit(20);
+
+  const { data, error } = await query;
 
   if (error) {
     logger.error('database', 'Failed to get events', error);
@@ -227,6 +233,29 @@ async function getTodayEventsAllUsers() {
   }
 
   // Filter only active users
+  return (data || []).filter((e) => e.users?.status === 'active');
+}
+
+/**
+ * Get all tomorrow's events for all active users (for 9pm evening summary)
+ */
+async function getTomorrowEventsAllUsers() {
+  const startOfToday = getStartOfTodayIsrael();
+  const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+  const endOfTomorrow = new Date(startOfTomorrow.getTime() + 24 * 60 * 60 * 1000);
+
+  const { data, error } = await supabase
+    .from('events')
+    .select('*, users(phone_number, status)')
+    .gte('datetime', startOfTomorrow.toISOString())
+    .lt('datetime', endOfTomorrow.toISOString())
+    .order('datetime', { ascending: true });
+
+  if (error) {
+    logger.error('database', 'Failed to get tomorrow events for all users', error);
+    return [];
+  }
+
   return (data || []).filter((e) => e.users?.status === 'active');
 }
 
@@ -645,6 +674,7 @@ module.exports = {
   deleteTaskByContent,
   getEventsForReminder,
   getTodayEventsAllUsers,
+  getTomorrowEventsAllUsers,
   getEventsForHourlyReminder,
   markReminderSent,
   addTask,
