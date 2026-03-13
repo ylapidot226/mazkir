@@ -32,7 +32,7 @@ module.exports = {
   },
   admin: {
     password: process.env.ADMIN_PASSWORD,
-    path: process.env.ADMIN_PATH || '/manage',
+    path: process.env.ADMIN_PATH || '/admin',
   },
   cron: {
     secret: process.env.CRON_SECRET || '',

@@ -24,7 +24,7 @@ app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? ['https://maztary.com', 'https://www.maztary.com']
     : true,
-  methods: ['GET', 'POST', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 
 app.use(express.json({ limit: '5mb' }));

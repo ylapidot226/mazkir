@@ -74,6 +74,19 @@ async function deleteUser(userId) {
   logger.info('database', 'User deleted', { userId });
 }
 
+async function updateUserPhone(userId, newPhoneNumber) {
+  const { error } = await supabase
+    .from('users')
+    .update({ phone_number: newPhoneNumber })
+    .eq('id', userId);
+
+  if (error) {
+    logger.error('database', 'Failed to update user phone', error);
+    throw error;
+  }
+  logger.info('database', 'User phone updated', { userId, newPhoneNumber });
+}
+
 async function getPendingUsers() {
   const { data, error } = await supabase
     .from('users')
@@ -679,6 +692,7 @@ module.exports = {
   activateUser,
   blockUser,
   deleteUser,
+  updateUserPhone,
   getPendingUsers,
   getAllUsers,
   addEvent,

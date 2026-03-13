@@ -127,6 +127,43 @@ router.post('/users/:id/unblock', adminLimiter, requireAuth, async (req, res) =>
   }
 });
 
+// Update user phone number
+router.put('/users/:id/phone', adminLimiter, requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'מספר טלפון הוא שדה חובה' });
+    }
+
+    // Validate and normalize phone number
+    let normalizedPhone = phone.replace(/[\s\-()]/g, '');
+    if (normalizedPhone.startsWith('0')) {
+      normalizedPhone = '972' + normalizedPhone.substring(1);
+    }
+    if (!/^\d{8,15}$/.test(normalizedPhone)) {
+      return res.status(400).json({ error: 'מספר טלפון לא תקין' });
+    }
+    if (!normalizedPhone.includes('@')) {
+      normalizedPhone = normalizedPhone + '@c.us';
+    }
+
+    // Check if phone already taken by another user
+    const existing = await db.getUser(normalizedPhone);
+    if (existing && existing.id !== id) {
+      return res.status(409).json({ error: 'מספר טלפון זה כבר בשימוש' });
+    }
+
+    await db.updateUserPhone(id, normalizedPhone);
+    auditLog('User phone updated', req, { userId: id, newPhone: normalizedPhone });
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('admin', 'Failed to update user phone', { message: error.message });
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // Delete user
 router.delete('/users/:id', adminLimiter, requireAuth, async (req, res) => {
   try {

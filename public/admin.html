@@ -179,6 +179,54 @@
       cursor: pointer;
     }
     .logout-btn:hover { border-color: #DC2626; color: #F87171; }
+    .btn-edit {
+      background: transparent;
+      border: 1px solid rgba(124,58,237,0.4);
+      color: #A78BFA;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+    }
+    .btn-edit:hover { background: rgba(124,58,237,0.15); }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: #1a1a1a;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    .modal h3 { margin-bottom: 1rem; }
+    .modal input {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      direction: ltr;
+      text-align: left;
+    }
+    .modal input:focus { outline: none; border-color: #7C3AED; }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .btn-cancel {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #888;
+      font-size: 0.85rem;
+      padding: 0.5rem 1rem;
+    }
+    .btn-cancel:hover { border-color: #555; }
   </style>
 </head>
 <body>
@@ -289,6 +337,7 @@
             ` : u.status === 'blocked' ? `
               <button class="btn btn-unblock" onclick="unblockUser('${u.id}')">ביטול חסימה</button>
             ` : ''}
+            <button class="btn btn-edit" onclick="editPhone('${u.id}', '${u.phone_number.replace('@c.us', '')}')">עריכת טלפון</button>
             <button class="btn btn-delete" onclick="deleteUser('${u.id}')">מחיקה</button>
           </div>
         </div>
@@ -319,6 +368,39 @@
       await apiCall(`/api/admin/users/${id}`, 'DELETE');
       await fetchStats();
       loadUsers();
+    }
+
+    function editPhone(userId, currentPhone) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <h3>עריכת מספר טלפון</h3>
+          <input type="tel" id="editPhoneInput" value="${currentPhone}" placeholder="05XXXXXXXX" dir="ltr">
+          <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="this.closest('.modal-overlay').remove()">ביטול</button>
+            <button class="btn btn-approve" onclick="savePhone('${userId}')">שמירה</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+      document.getElementById('editPhoneInput').focus();
+      document.getElementById('editPhoneInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') savePhone(userId);
+      });
+    }
+
+    async function savePhone(userId) {
+      const phone = document.getElementById('editPhoneInput').value.trim();
+      if (!phone) return;
+      try {
+        await apiCall(`/api/admin/users/${userId}/phone`, 'PUT', { phone });
+        document.querySelector('.modal-overlay').remove();
+        loadUsers();
+      } catch (e) {
+        alert('שגיאה בעדכון מספר טלפון');
+      }
     }
 
     // Auto-refresh every 30 seconds
