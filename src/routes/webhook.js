@@ -134,12 +134,19 @@ async function handlePollVote(userId, chatId, pollStanzaId, votes) {
  * Execute the action returned by AI
  */
 async function executeAction(userId, chatId, aiResponse) {
-  const { action, category, content, datetime, location, response } = aiResponse;
+  const { action, category, content, datetime, location, items, response } = aiResponse;
 
   try {
     switch (action) {
       case 'add_event':
-        await db.addEvent(userId, content, datetime, location);
+        if (items && Array.isArray(items) && items.length > 0) {
+          // Multiple events (e.g. recurring on different days)
+          for (const item of items) {
+            await db.addEvent(userId, item.content || content, item.datetime, item.location || location);
+          }
+        } else {
+          await db.addEvent(userId, content, datetime, location);
+        }
         break;
 
       case 'add_task':
@@ -147,8 +154,11 @@ async function executeAction(userId, chatId, aiResponse) {
         break;
 
       case 'add_shopping': {
-        const items = content.split(',').map((i) => i.trim()).filter(Boolean);
-        for (const item of items) {
+        // Support both comma-separated content and items array
+        const shoppingItems = items && Array.isArray(items) && items.length > 0
+          ? items.map((i) => (typeof i === 'string' ? i : i.content).trim()).filter(Boolean)
+          : content.split(',').map((i) => i.trim()).filter(Boolean);
+        for (const item of shoppingItems) {
           await db.addShoppingItem(userId, item);
         }
         break;

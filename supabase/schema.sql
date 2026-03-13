@@ -6,6 +6,7 @@ CREATE TABLE users (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   phone_number TEXT UNIQUE NOT NULL,
   name TEXT,
+  email TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'blocked')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -19,6 +20,7 @@ CREATE TABLE events (
   location TEXT,
   reminder_sent BOOLEAN DEFAULT FALSE,
   day_reminder_sent BOOLEAN DEFAULT FALSE,
+  day_summary_sent BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

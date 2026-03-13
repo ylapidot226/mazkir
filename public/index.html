@@ -670,7 +670,7 @@
   <div class="hero-content animate-in">
     <div class="hero-badge">&#10022; המזכיר החכם שלך בוואטסאפ</div>
     <h1>תפסיק לשכוח.<br>תתחיל לעשות.</h1>
-    <p class="hero-subtitle">שלח הודעה רגילה בעברית — המזכיר מבין, שומר ומתזכר אותך. בלי אפליקציות, בלי סיסמאות, הכל בוואטסאפ.</p>
+    <p class="hero-subtitle">דבר איתו כמו עם חבר — הוא מבין, שומר ומתזכר אותך. כל בוקר ב-6 מקבלים סיכום של היום, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
     <div class="hero-buttons">
       <button class="btn-primary ripple" onclick="scrollToSignup()">התחל בחינם &larr;</button>
       <button class="btn-outline ripple" onclick="scrollToHowItWorks()">איך זה עובד?</button>
@@ -715,7 +715,7 @@
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128197;</div>
         <h3>אירועים חכמים</h3>
-        <p>מבין תאריכים בשפה טבעית — "עוד שבועיים", "ביום שלישי הבא". שומר ומתזכר אוטומטית 24 שעות לפני.</p>
+        <p>מבין תאריכים בשפה טבעית — "עוד שבועיים", "ביום שלישי הבא". סיכום יומי ב-6 בבוקר ותזכורת שעה לפני כל אירוע.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128203;</div>
@@ -753,7 +753,7 @@
           <h3>המזכיר מבין ושומר</h3>
           <p>AI חכם מזהה את הכוונה שלך ושומר בצורה מסודרת</p>
           <div class="step-chat">
-            <div class="wa-msg received">&#9989; שמרתי! פגישה עם עו"ד ביום חמישי 14:00. אתזכר אותך יום לפני &#128276;</div>
+            <div class="wa-msg received">נתפס! &#9989; פגישה עם עו"ד ביום חמישי ב-14:00</div>
           </div>
         </div>
       </div>
@@ -761,9 +761,9 @@
         <div class="step-number">3</div>
         <div class="step-content">
           <h3>מקבל תזכורות בזמן</h3>
-          <p>24 שעות לפני וביום עצמו — אף פעם לא תשכח</p>
+          <p>כל בוקר ב-6:00 סיכום של היום, ושעה לפני כל אירוע — אף פעם לא תשכח</p>
           <div class="step-chat">
-            <div class="wa-msg received">&#9200; תזכורת ליום מחר!<br>&#128197; פגישה עם עו"ד<br>&#128336; 14:00<br><br>אל תשכח! &#128522;</div>
+            <div class="wa-msg received">&#9728;&#65039; בוקר טוב! הנה מה שמחכה לך היום:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>יום מוצלח! &#128170;</div>
           </div>
         </div>
       </div>
@@ -888,15 +888,15 @@
 
   // WhatsApp chat animation
   const chatMessages = [
-    { type: 'sent', text: 'יש לי פגישה מחר בצהריים', delay: 500 },
-    { type: 'typing', delay: 1500 },
-    { type: 'received', text: '&#9989; שמרתי! פגישה מחר ב-12:00.\nאתזכר אותך מחר בבוקר &#128276;', delay: 2000 },
-    { type: 'sent', text: 'אני צריך חלב ולחם', delay: 3500 },
-    { type: 'typing', delay: 1500 },
-    { type: 'received', text: '&#128722; הוספתי לרשימת הקניות:\n- חלב\n- לחם', delay: 2000 },
-    { type: 'sent', text: 'מה האירועים שלי?', delay: 3000 },
+    { type: 'sent', text: 'מחר ב-9 יש לי הדלקת אש בדליקטסו', delay: 500 },
     { type: 'typing', delay: 1200 },
-    { type: 'received', text: '&#128197; האירועים הקרובים שלך:\n\n1. פגישה - מחר 12:00\n\nזה הכל! &#128522;', delay: 2000 },
+    { type: 'received', text: 'נתפס! &#128293; הדלקת אש מחר ב-9 בבוקר', delay: 1800 },
+    { type: 'sent', text: 'ביום רביעי הצרפתים מתחילים לאפות במאפיה', delay: 3000 },
+    { type: 'typing', delay: 1200 },
+    { type: 'received', text: 'שמור &#9989; הצרפתים מתחילים לאפות ביום רביעי', delay: 1800 },
+    { type: 'sent', text: 'כמה זמן לפני אתה מתזכר?', delay: 3000 },
+    { type: 'typing', delay: 1000 },
+    { type: 'received', text: 'כל בוקר ב-6 אני שולח סיכום של היום, ושעה לפני כל אירוע תזכורת נוספת &#128522;', delay: 2000 },
   ];
 
   function runChatAnimation() {

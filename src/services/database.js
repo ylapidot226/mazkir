@@ -207,33 +207,57 @@ async function deleteTaskByContent(userId, content) {
   return null;
 }
 
-async function getEventsForReminder() {
-  const now = new Date();
-  const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const in25h = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+/**
+ * Get all today's events for all active users (for daily 6am summary)
+ */
+async function getTodayEventsAllUsers() {
+  const startOfToday = getStartOfTodayIsrael();
+  const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 
-  // Events happening in ~24 hours that haven't been reminded
-  const { data: dayBefore, error: err1 } = await supabase
+  const { data, error } = await supabase
+    .from('events')
+    .select('*, users(phone_number, status)')
+    .gte('datetime', startOfToday.toISOString())
+    .lt('datetime', endOfToday.toISOString())
+    .order('datetime', { ascending: true });
+
+  if (error) {
+    logger.error('database', 'Failed to get today events for all users', error);
+    return [];
+  }
+
+  // Filter only active users
+  return (data || []).filter((e) => e.users?.status === 'active');
+}
+
+/**
+ * Get events happening in ~1 hour that haven't been reminded yet
+ */
+async function getEventsForHourlyReminder() {
+  const now = new Date();
+  const in55min = new Date(now.getTime() + 55 * 60 * 1000);
+  const in65min = new Date(now.getTime() + 65 * 60 * 1000);
+
+  const { data, error } = await supabase
     .from('events')
     .select('*, users(phone_number)')
     .eq('reminder_sent', false)
-    .gte('datetime', in24h.toISOString())
-    .lte('datetime', in25h.toISOString());
+    .gte('datetime', in55min.toISOString())
+    .lte('datetime', in65min.toISOString());
 
-  if (err1) logger.error('database', 'Failed to get 24h reminders', err1);
+  if (error) {
+    logger.error('database', 'Failed to get hourly reminders', error);
+    return [];
+  }
 
-  // Events happening in the next 5 minutes (day-of reminder)
-  const in5min = new Date(now.getTime() + 5 * 60 * 1000);
-  const { data: dayOf, error: err2 } = await supabase
-    .from('events')
-    .select('*, users(phone_number)')
-    .eq('day_reminder_sent', false)
-    .gte('datetime', now.toISOString())
-    .lte('datetime', in5min.toISOString());
+  return data || [];
+}
 
-  if (err2) logger.error('database', 'Failed to get day-of reminders', err2);
-
-  return { dayBefore: dayBefore || [], dayOf: dayOf || [] };
+/**
+ * @deprecated Use getTodayEventsAllUsers and getEventsForHourlyReminder instead
+ */
+async function getEventsForReminder() {
+  return { dayBefore: [], dayOf: [] };
 }
 
 async function markReminderSent(eventId, field = 'reminder_sent') {
@@ -537,6 +561,8 @@ module.exports = {
   deleteAllEvents,
   deleteTaskByContent,
   getEventsForReminder,
+  getTodayEventsAllUsers,
+  getEventsForHourlyReminder,
   markReminderSent,
   addTask,
   getTasks,

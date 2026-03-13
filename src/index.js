@@ -5,7 +5,7 @@ const config = require('./config');
 const logger = require('./utils/logger');
 const webhookRoutes = require('./routes/webhook');
 const adminRoutes = require('./routes/admin');
-const { checkEventReminders, checkCustomReminders } = require('./services/reminders');
+const { runAllReminders } = require('./services/reminders');
 
 const app = express();
 
@@ -34,8 +34,7 @@ app.get('/health', (req, res) => {
 // Cron endpoint for Vercel Cron Jobs
 app.get('/api/cron/reminders', async (req, res) => {
   try {
-    await checkEventReminders();
-    await checkCustomReminders();
+    await runAllReminders();
     res.json({ success: true, timestamp: new Date().toISOString() });
   } catch (error) {
     logger.error('cron', 'Cron job failed', error);
