@@ -138,7 +138,7 @@ router.put('/users/:id/phone', adminLimiter, requireAuth, async (req, res) => {
     }
 
     // Validate and normalize phone number
-    let normalizedPhone = phone.replace(/[\s\-()]/g, '');
+    let normalizedPhone = phone.replace(/[\s\-()+]/g, '');
     if (normalizedPhone.startsWith('0')) {
       normalizedPhone = '972' + normalizedPhone.substring(1);
     }
@@ -193,7 +193,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
 
     // Validate and normalize phone number (#7)
-    let normalizedPhone = phone.replace(/[\s\-()]/g, '');
+    let normalizedPhone = phone.replace(/[\s\-()+]/g, '');
     if (normalizedPhone.startsWith('0')) {
       normalizedPhone = '972' + normalizedPhone.substring(1);
     }
