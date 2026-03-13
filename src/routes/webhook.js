@@ -1,8 +1,10 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const greenApi = require('../services/greenApi');
 const claude = require('../services/claude');
 const db = require('../services/database');
+const config = require('../config');
 const logger = require('../utils/logger');
 
 // Hebrew date formatting that works on all platforms
@@ -11,7 +13,6 @@ const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי
 
 function formatDateHe(isoString) {
   const d = new Date(isoString);
-  // Convert to Israel time
   const il = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
   const day = DAYS_HE[il.getDay()];
   const date = il.getDate();
@@ -21,7 +22,60 @@ function formatDateHe(isoString) {
   return { day, date, month, time: `${hours}:${minutes}`, full: `יום ${day}, ${date} ב${month} בשעה ${hours}:${minutes}` };
 }
 
-router.post('/whatsapp', async (req, res) => {
+// Rate limiting per IP (#5)
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute per IP
+  message: { error: 'Too many requests' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Validate datetime string (#10)
+ */
+function isValidDatetime(dt) {
+  if (!dt) return false;
+  const d = new Date(dt);
+  return !isNaN(d.getTime());
+}
+
+/**
+ * Sanitize text for ilike queries - escape special pattern chars (#6)
+ */
+function sanitizeForLike(str) {
+  if (!str) return str;
+  return str.replace(/[%_\\]/g, (c) => '\\' + c);
+}
+
+/**
+ * Verify webhook comes from Green API (#1)
+ */
+function verifyWebhook(req, res, next) {
+  const webhookToken = config.greenApi.webhookToken;
+
+  // If no token configured, skip verification (but log warning)
+  if (!webhookToken) {
+    return next();
+  }
+
+  // Green API sends instance ID in the body
+  const instanceId = req.body?.instanceData?.idInstance?.toString();
+  if (instanceId && instanceId === config.greenApi.instanceId) {
+    return next();
+  }
+
+  // Also check custom token header if configured
+  const headerToken = req.headers['x-webhook-token'];
+  if (headerToken === webhookToken) {
+    return next();
+  }
+
+  logger.warn('webhook', 'Unauthorized webhook attempt', { ip: req.ip });
+  return res.status(403).json({ error: 'Forbidden' });
+}
+
+router.post('/whatsapp', webhookLimiter, verifyWebhook, async (req, res) => {
   try {
     const parsed = greenApi.parseWebhook(req.body);
     if (!parsed) {
@@ -40,7 +94,7 @@ router.post('/whatsapp', async (req, res) => {
       return res.status(200).json({ success: true });
     }
 
-    logger.info('webhook', 'Message received', { sender, senderName, text: text.substring(0, 100) });
+    logger.info('webhook', 'Message received', { sender, senderName });
 
     // Check if user exists and is active
     const user = await db.getUser(sender);
@@ -48,7 +102,7 @@ router.post('/whatsapp', async (req, res) => {
     if (!user) {
       await greenApi.sendMessage(
         chatId,
-        `שלום ${senderName || ''} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://maztary.com\n\nנתראה שם! 😊`
+        `שלום ${(senderName || '').replace(/<[^>]*>/g, '')} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://maztary.com\n\nנתראה שם! 😊`
       );
       logger.info('webhook', 'Unknown user directed to website', { sender });
       return res.status(200).json({ success: true });
@@ -63,7 +117,6 @@ router.post('/whatsapp', async (req, res) => {
     }
 
     if (user.status === 'blocked') {
-      logger.info('webhook', 'Blocked user tried to send message', { sender });
       return res.status(200).json({ success: true });
     }
 
@@ -86,7 +139,7 @@ router.post('/whatsapp', async (req, res) => {
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    logger.error('webhook', 'Error processing webhook', error);
+    logger.error('webhook', 'Error processing webhook', { message: error.message });
     return res.status(200).json({ success: true });
   }
 });
@@ -97,19 +150,14 @@ router.post('/whatsapp', async (req, res) => {
 async function handlePollVote(userId, chatId, pollStanzaId, votes) {
   try {
     const mapping = await db.getPollMapping(userId, pollStanzaId);
-    if (!mapping) {
-      logger.info('webhook', 'No poll mapping found', { pollStanzaId });
-      return;
-    }
+    if (!mapping) return;
 
-    // Find which options were voted for (have voters)
     const votedOptions = votes
       .filter((v) => v.optionVoters && v.optionVoters.length > 0)
       .map((v) => v.optionName);
 
     if (votedOptions.length === 0) return;
 
-    // Complete the matching tasks
     let completedCount = 0;
     for (const taskContent of votedOptions) {
       const task = mapping.tasks.find((t) => t.content === taskContent);
@@ -140,11 +188,12 @@ async function executeAction(userId, chatId, aiResponse) {
     switch (action) {
       case 'add_event':
         if (items && Array.isArray(items) && items.length > 0) {
-          // Multiple events (e.g. recurring on different days)
           for (const item of items) {
+            if (!isValidDatetime(item.datetime)) continue; // (#10)
             await db.addEvent(userId, item.content || content, item.datetime, item.location || location);
           }
         } else {
+          if (!isValidDatetime(datetime)) break; // (#10)
           await db.addEvent(userId, content, datetime, location);
         }
         break;
@@ -154,7 +203,6 @@ async function executeAction(userId, chatId, aiResponse) {
         break;
 
       case 'add_shopping': {
-        // Support both comma-separated content and items array
         const shoppingItems = items && Array.isArray(items) && items.length > 0
           ? items.map((i) => (typeof i === 'string' ? i : i.content).trim()).filter(Boolean)
           : content.split(',').map((i) => i.trim()).filter(Boolean);
@@ -188,10 +236,7 @@ async function executeAction(userId, chatId, aiResponse) {
           msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
         }
 
-        if (!msg) {
-          msg = 'אין לך אירועים 📅';
-        }
-
+        if (!msg) msg = 'אין לך אירועים 📅';
         await greenApi.sendMessage(chatId, msg);
         return msg;
       }
@@ -204,13 +249,11 @@ async function executeAction(userId, chatId, aiResponse) {
           msg = `אין משימות פתוחות${catMsg} ✅`;
           await greenApi.sendMessage(chatId, msg);
         } else {
-          // Send tasks as a poll so user can check off completed ones
           const options = tasks.slice(0, 12).map((t) => t.content);
           const question = category
             ? `📋 משימות - ${category}:`
             : '📋 המשימות שלך (סמן מה בוצע):';
           const pollResult = await greenApi.sendPoll(chatId, question, options);
-          // Store poll ID to task mapping for handling votes
           if (pollResult?.idMessage) {
             await db.savePollMapping(userId, pollResult.idMessage, tasks.slice(0, 12));
           }
@@ -233,7 +276,8 @@ async function executeAction(userId, chatId, aiResponse) {
       }
 
       case 'delete_event': {
-        const count = await db.deleteEventByContent(userId, content);
+        const safeContent = sanitizeForLike(content); // (#6)
+        const count = await db.deleteEventByContent(userId, safeContent);
         let msg;
         if (count > 0) {
           msg = `🗑️ ${count === 1 ? 'האירוע נמחק' : `${count} אירועים נמחקו`} בהצלחה!`;
@@ -257,7 +301,8 @@ async function executeAction(userId, chatId, aiResponse) {
       }
 
       case 'delete_task': {
-        const deleted = await db.deleteTaskByContent(userId, content);
+        const safeContent = sanitizeForLike(content); // (#6)
+        const deleted = await db.deleteTaskByContent(userId, safeContent);
         let msg;
         if (deleted) {
           msg = `🗑️ המשימה "${deleted.content}" נמחקה!`;
@@ -271,14 +316,15 @@ async function executeAction(userId, chatId, aiResponse) {
       case 'add_recurring': {
         const days = aiResponse.days || '';
         const time = aiResponse.time || '';
-        if (days && time) {
+        if (days && time && /^[\d,\s]+$/.test(days) && /^\d{1,2}:\d{2}$/.test(time)) {
           await db.addRecurringEvent(userId, content, days, time, location);
         }
         break;
       }
 
       case 'delete_recurring': {
-        const deletedRecurring = await db.deleteRecurringEventByContent(userId, content);
+        const safeContent = sanitizeForLike(content); // (#6)
+        const deletedRecurring = await db.deleteRecurringEventByContent(userId, safeContent);
         let msg;
         if (deletedRecurring) {
           msg = `🗑️ האירוע החוזר "${deletedRecurring.title}" בוטל!`;
@@ -320,7 +366,7 @@ async function executeAction(userId, chatId, aiResponse) {
         break;
 
       case 'add_reminder':
-        if (datetime) {
+        if (isValidDatetime(datetime)) { // (#10)
           await db.addReminder(userId, content, datetime);
         }
         break;

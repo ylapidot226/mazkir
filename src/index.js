@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 const config = require('./config');
 const logger = require('./utils/logger');
@@ -9,16 +10,28 @@ const { runAllReminders } = require('./services/reminders');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Security headers (#8)
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow inline scripts for landing page
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS - restrict to own domain (#4)
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://maztary.com', 'https://www.maztary.com']
+    : true,
+  methods: ['GET', 'POST', 'DELETE'],
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files (landing page + admin)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Serve admin page at /admin
-app.get('/admin', (req, res) => {
+// Admin panel at non-obvious path (#12)
+app.get(config.admin.path, (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
 });
 
@@ -31,8 +44,18 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Cron endpoint for Vercel Cron Jobs
+// Cron endpoint - secured with secret (#3)
 app.get('/api/cron/reminders', async (req, res) => {
+  // Allow Vercel cron (sends authorization header) or check secret
+  const authHeader = req.headers['authorization'];
+  const querySecret = req.query.secret;
+  const cronSecret = config.cron.secret;
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
+    logger.warn('cron', 'Unauthorized cron attempt', { ip: req.ip });
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     await runAllReminders();
     res.json({ success: true, timestamp: new Date().toISOString() });
@@ -47,9 +70,6 @@ if (process.env.VERCEL !== '1') {
   const { startReminderCron } = require('./services/reminders');
   app.listen(config.port, () => {
     logger.info('server', `Mazkir server running on port ${config.port}`);
-    logger.info('server', `Landing page: http://localhost:${config.port}`);
-    logger.info('server', `Admin panel: http://localhost:${config.port}/admin.html`);
-    logger.info('server', `Webhook URL: http://localhost:${config.port}/webhook/whatsapp`);
     startReminderCron();
   });
 }
