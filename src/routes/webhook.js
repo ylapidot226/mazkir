@@ -166,17 +166,32 @@ async function executeAction(userId, chatId, aiResponse) {
 
       case 'query_events': {
         const events = await db.getUpcomingEvents(userId);
-        let msg;
-        if (events.length === 0) {
-          msg = 'אין לך אירועים קרובים 📅';
-        } else {
+        const recurring = await db.getUserRecurringEvents(userId);
+        let msg = '';
+
+        if (events.length > 0) {
           const formatted = events.map((e) => {
             const f = formatDateHe(e.datetime);
             const loc = e.location ? ` 📍 ${e.location}` : '';
             return `• ${e.title} - ${f.full}${loc}`;
           }).join('\n');
-          msg = `📅 האירועים הקרובים שלך:\n\n${formatted}`;
+          msg += `📅 אירועים קרובים:\n\n${formatted}`;
         }
+
+        if (recurring.length > 0) {
+          const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+          const formatted = recurring.map((r) => {
+            const days = r.days.split(',').map((d) => dayNames[parseInt(d.trim())] || d.trim()).join(', ');
+            const loc = r.location ? ` 📍 ${r.location}` : '';
+            return `• ${r.title} - כל יום ${days} ב-${r.time}${loc}`;
+          }).join('\n');
+          msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
+        }
+
+        if (!msg) {
+          msg = 'אין לך אירועים 📅';
+        }
+
         await greenApi.sendMessage(chatId, msg);
         return msg;
       }
