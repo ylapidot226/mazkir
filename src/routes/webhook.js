@@ -167,6 +167,7 @@ async function processWebhook(body) {
 
     // Process with AI
     const aiResponse = await claude.processMessage(text, history);
+    logger.info('webhook', 'AI response', { action: aiResponse.action, content: aiResponse.content, days: aiResponse.days, time: aiResponse.time, category: aiResponse.category });
 
     // Save user message
     await db.saveMessage(user.id, 'user', text);
@@ -193,6 +194,8 @@ function getCondensedHistory(action, sentResponse) {
       return '[הצגתי את האירועים הקרובים]';
     case 'query_tasks':
       return '[הצגתי את רשימת המשימות]';
+    case 'query_lists':
+      return '[הצגתי את הרשימות]';
     case 'query_shopping':
       return '[הצגתי את רשימת הקניות]';
     case 'query_recurring':
@@ -329,6 +332,38 @@ async function executeAction(userId, chatId, aiResponse) {
         return msg;
       }
 
+      case 'query_lists': {
+        const counts = await db.getCategoriesWithCounts(userId);
+        let msg;
+        const entries = Object.entries(counts);
+        if (entries.length === 0) {
+          msg = 'אין לך רשימות פעילות כרגע 📋';
+        } else {
+          const formatted = entries.map(([cat, count]) => `• ${cat} (${count} משימות)`).join('\n');
+          msg = `📋 הרשימות שלך:\n\n${formatted}`;
+        }
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
+      case 'delete_list': {
+        const listName = category || content;
+        if (!listName) {
+          const msg = 'איזו רשימה למחוק? 🤔';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        const count = await db.deleteTasksByCategory(userId, listName);
+        let msg;
+        if (count > 0) {
+          msg = `🗑️ הרשימה "${listName}" נמחקה (${count} משימות)!`;
+        } else {
+          msg = `לא מצאתי רשימה בשם "${listName}" 🤔`;
+        }
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
       case 'query_shopping': {
         const list = await db.getShoppingList(userId);
         let msg;
@@ -381,10 +416,13 @@ async function executeAction(userId, chatId, aiResponse) {
       }
 
       case 'add_recurring': {
+        const recurTitle = content || aiResponse.title || '';
         const days = aiResponse.days || '';
         const time = aiResponse.time || '';
-        if (days && time && /^[\d,\s]+$/.test(days) && /^\d{1,2}:\d{2}$/.test(time)) {
-          await db.addRecurringEvent(userId, content, days, time, location);
+        if (recurTitle && days && time && /^[\d,\s]+$/.test(days) && /^\d{1,2}:\d{2}$/.test(time)) {
+          await db.addRecurringEvent(userId, recurTitle, days, time, location);
+        } else {
+          logger.warn('webhook', 'add_recurring missing fields', { content: recurTitle, days, time });
         }
         break;
       }
@@ -451,7 +489,7 @@ async function executeAction(userId, chatId, aiResponse) {
     }
     return finalResponse || null;
   } catch (error) {
-    logger.error('webhook', 'Failed to execute action', { action, error: error.message });
+    logger.error('webhook', 'Failed to execute action', { action, content, category, error: error.message, stack: error.stack });
     const errMsg = 'אופס, משהו השתבש 😅 אפשר לנסות שוב?';
     await greenApi.sendMessage(chatId, errMsg);
     return errMsg;

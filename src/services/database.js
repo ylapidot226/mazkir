@@ -377,6 +377,40 @@ async function getCategories(userId) {
   return unique;
 }
 
+async function getCategoriesWithCounts(userId) {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('category')
+    .eq('user_id', userId)
+    .eq('completed', false);
+
+  if (error) {
+    logger.error('database', 'Failed to get categories with counts', error);
+    throw error;
+  }
+  const counts = {};
+  for (const t of data || []) {
+    counts[t.category] = (counts[t.category] || 0) + 1;
+  }
+  return counts;
+}
+
+async function deleteTasksByCategory(userId, category) {
+  const { data, error } = await supabase
+    .from('tasks')
+    .delete()
+    .eq('user_id', userId)
+    .eq('category', category)
+    .select();
+
+  if (error) {
+    logger.error('database', 'Failed to delete list', error);
+    throw error;
+  }
+  logger.info('database', 'List deleted', { userId, category, count: (data || []).length });
+  return (data || []).length;
+}
+
 async function completeTask(userId, taskId) {
   const { error } = await supabase
     .from('tasks')
@@ -708,6 +742,8 @@ module.exports = {
   addTask,
   getTasks,
   getCategories,
+  getCategoriesWithCounts,
+  deleteTasksByCategory,
   completeTask,
   completeTaskByContent,
   addShoppingItem,
