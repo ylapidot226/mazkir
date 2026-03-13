@@ -463,6 +463,89 @@ async function markReminderDone(reminderId) {
   if (error) logger.error('database', 'Failed to mark reminder done', error);
 }
 
+// ---- Recurring Events ----
+
+async function addRecurringEvent(userId, title, days, time, location) {
+  const { data, error } = await supabase
+    .from('recurring_events')
+    .insert({ user_id: userId, title, days, time, location })
+    .select()
+    .single();
+
+  if (error) {
+    logger.error('database', 'Failed to add recurring event', error);
+    throw error;
+  }
+  logger.info('database', 'Recurring event added', { userId, title, days, time });
+  return data;
+}
+
+async function getActiveRecurringEvents() {
+  const { data, error } = await supabase
+    .from('recurring_events')
+    .select('*, users(phone_number, status)')
+    .eq('active', true);
+
+  if (error) {
+    logger.error('database', 'Failed to get recurring events', error);
+    return [];
+  }
+  return (data || []).filter((e) => e.users?.status === 'active');
+}
+
+async function getUserRecurringEvents(userId) {
+  const { data, error } = await supabase
+    .from('recurring_events')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('active', true)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    logger.error('database', 'Failed to get user recurring events', error);
+    return [];
+  }
+  return data || [];
+}
+
+async function deleteRecurringEventByContent(userId, content) {
+  const { data } = await supabase
+    .from('recurring_events')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('active', true)
+    .ilike('title', `%${content}%`);
+
+  if (data && data.length > 0) {
+    await supabase
+      .from('recurring_events')
+      .update({ active: false })
+      .eq('id', data[0].id);
+    logger.info('database', 'Recurring event deactivated', { userId, title: data[0].title });
+    return data[0];
+  }
+  return null;
+}
+
+/**
+ * Check if an event from a recurring pattern already exists today
+ */
+async function recurringEventExistsToday(userId, title, datetime) {
+  const startOfToday = getStartOfTodayIsrael();
+  const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
+
+  const { data } = await supabase
+    .from('events')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('title', title)
+    .gte('datetime', startOfToday.toISOString())
+    .lt('datetime', endOfToday.toISOString())
+    .limit(1);
+
+  return data && data.length > 0;
+}
+
 // ---- Poll Mappings (in-memory, polls expire after 24h) ----
 
 const pollMappings = new Map();
@@ -576,6 +659,11 @@ module.exports = {
   addReminder,
   getDueReminders,
   markReminderDone,
+  addRecurringEvent,
+  getActiveRecurringEvents,
+  getUserRecurringEvents,
+  deleteRecurringEventByContent,
+  recurringEventExistsToday,
   savePollMapping,
   getPollMapping,
   saveMessage,

@@ -37,6 +37,67 @@ function isDailySummaryTime() {
   return hours === 6 && minutes < 10;
 }
 
+// Map Hebrew day names to JS day numbers (0=Sunday)
+const DAY_NAME_TO_NUM = {
+  'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3,
+  'חמישי': 4, 'שישי': 5, 'שבת': 6,
+  'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3,
+  'thursday': 4, 'friday': 5, 'saturday': 6,
+  '0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6,
+};
+
+/**
+ * Generate today's events from recurring patterns
+ */
+async function generateRecurringEvents() {
+  try {
+    const recurringEvents = await db.getActiveRecurringEvents();
+    if (recurringEvents.length === 0) return;
+
+    const now = new Date();
+    const ilTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+    const todayDayNum = ilTime.getDay(); // 0=Sunday
+
+    for (const recurring of recurringEvents) {
+      // Parse days string (e.g., "1,2,3,4" or "שני,שלישי,רביעי,חמישי")
+      const days = recurring.days.split(',').map((d) => {
+        const trimmed = d.trim().toLowerCase();
+        return DAY_NAME_TO_NUM[trimmed] ?? parseInt(trimmed, 10);
+      }).filter((d) => !isNaN(d));
+
+      // Check if today is one of the recurring days
+      if (!days.includes(todayDayNum)) continue;
+
+      // Parse time (e.g., "13:00")
+      const [hours, minutes] = recurring.time.split(':').map(Number);
+
+      // Build today's datetime in Israel timezone
+      const eventDate = new Date(ilTime);
+      eventDate.setHours(hours, minutes, 0, 0);
+
+      // Convert back to UTC for storage
+      const utcStr = now.toLocaleString('en-US', { timeZone: 'UTC', hour12: false });
+      const ilStr = now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem', hour12: false });
+      const offsetMs = new Date(ilStr) - new Date(utcStr);
+      const eventUtc = new Date(eventDate.getTime() - offsetMs);
+
+      // Check if this event already exists today
+      const exists = await db.recurringEventExistsToday(
+        recurring.user_id, recurring.title, eventUtc.toISOString()
+      );
+      if (exists) continue;
+
+      // Create the event
+      await db.addEvent(recurring.user_id, recurring.title, eventUtc.toISOString(), recurring.location);
+      logger.info('reminders', 'Recurring event generated', {
+        userId: recurring.user_id, title: recurring.title, datetime: eventUtc.toISOString(),
+      });
+    }
+  } catch (error) {
+    logger.error('reminders', 'Failed to generate recurring events', error);
+  }
+}
+
 /**
  * Send daily morning summary at 6:00 AM to all active users
  */
@@ -131,6 +192,7 @@ async function checkCustomReminders() {
  * Run all reminder checks
  */
 async function runAllReminders() {
+  await generateRecurringEvents();
   await sendDailySummary();
   await checkHourlyReminders();
   await checkCustomReminders();

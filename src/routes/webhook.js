@@ -253,6 +253,45 @@ async function executeAction(userId, chatId, aiResponse) {
         return msg;
       }
 
+      case 'add_recurring': {
+        const days = aiResponse.days || '';
+        const time = aiResponse.time || '';
+        if (days && time) {
+          await db.addRecurringEvent(userId, content, days, time, location);
+        }
+        break;
+      }
+
+      case 'delete_recurring': {
+        const deletedRecurring = await db.deleteRecurringEventByContent(userId, content);
+        let msg;
+        if (deletedRecurring) {
+          msg = `🗑️ האירוע החוזר "${deletedRecurring.title}" בוטל!`;
+        } else {
+          msg = 'לא מצאתי אירוע חוזר מתאים 🤔';
+        }
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
+      case 'query_recurring': {
+        const recurring = await db.getUserRecurringEvents(userId);
+        let msg;
+        if (recurring.length === 0) {
+          msg = 'אין לך אירועים חוזרים 🔄';
+        } else {
+          const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+          const formatted = recurring.map((r) => {
+            const days = r.days.split(',').map((d) => dayNames[parseInt(d.trim())] || d.trim()).join(', ');
+            const loc = r.location ? ` 📍 ${r.location}` : '';
+            return `• ${r.title} - כל יום ${days} ב-${r.time}${loc}`;
+          }).join('\n');
+          msg = `🔄 האירועים החוזרים שלך:\n\n${formatted}`;
+        }
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
       case 'complete_task':
         await db.completeTaskByContent(userId, category, content);
         break;

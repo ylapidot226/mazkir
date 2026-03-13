@@ -62,7 +62,20 @@ CREATE TABLE messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Recurring events table
+CREATE TABLE recurring_events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  days TEXT NOT NULL,
+  time TEXT NOT NULL,
+  location TEXT,
+  active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Indexes for performance
+CREATE INDEX idx_recurring_user ON recurring_events(user_id, active);
 CREATE INDEX idx_users_phone ON users(phone_number);
 CREATE INDEX idx_events_user ON events(user_id);
 CREATE INDEX idx_events_datetime ON events(datetime);
