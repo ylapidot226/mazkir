@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 const supabase = createClient(config.supabase.url, config.supabase.key);
 
@@ -701,7 +702,7 @@ function getPollMapping(userId, pollMessageId) {
 async function saveMessage(userId, role, content) {
   const { error } = await supabase
     .from('messages')
-    .insert({ user_id: userId, role, content });
+    .insert({ user_id: userId, role, content: encrypt(content) });
 
   if (error) {
     logger.error('database', 'Failed to save message', error);
@@ -720,7 +721,7 @@ async function getRecentMessages(userId, limit = 10) {
     logger.error('database', 'Failed to get messages', error);
     return [];
   }
-  return (data || []).reverse();
+  return (data || []).reverse().map((m) => ({ ...m, content: decrypt(m.content) }));
 }
 
 // ---- Stats ----
@@ -803,7 +804,7 @@ async function saveCalendarConnection(userId, provider, credentials, calendarId)
   if (existing) {
     const { error } = await supabase
       .from('calendar_connections')
-      .update({ credentials, calendar_id: calendarId, sync_token: null, last_synced_at: null })
+      .update({ credentials: encrypt(credentials), calendar_id: calendarId, sync_token: null, last_synced_at: null })
       .eq('id', existing.id);
     if (error) {
       logger.error('database', 'Failed to update calendar connection', error);
@@ -815,7 +816,7 @@ async function saveCalendarConnection(userId, provider, credentials, calendarId)
 
   const { data, error } = await supabase
     .from('calendar_connections')
-    .insert({ user_id: userId, provider, credentials, calendar_id: calendarId })
+    .insert({ user_id: userId, provider, credentials: encrypt(credentials), calendar_id: calendarId })
     .select()
     .single();
 
@@ -838,6 +839,7 @@ async function getCalendarConnection(userId, provider) {
   if (error && error.code !== 'PGRST116') {
     logger.error('database', 'Failed to get calendar connection', error);
   }
+  if (data) data.credentials = decrypt(data.credentials);
   return data;
 }
 
@@ -851,7 +853,7 @@ async function getUserCalendarConnections(userId) {
     logger.error('database', 'Failed to get user calendar connections', error);
     return [];
   }
-  return data || [];
+  return (data || []).map((c) => ({ ...c, credentials: decrypt(c.credentials) }));
 }
 
 async function getAllCalendarConnections() {
@@ -863,13 +865,13 @@ async function getAllCalendarConnections() {
     logger.error('database', 'Failed to get all calendar connections', error);
     return [];
   }
-  return data || [];
+  return (data || []).map((c) => ({ ...c, credentials: decrypt(c.credentials) }));
 }
 
 async function updateCalendarCredentials(connectionId, credentials) {
   const { error } = await supabase
     .from('calendar_connections')
-    .update({ credentials })
+    .update({ credentials: encrypt(credentials) })
     .eq('id', connectionId);
 
   if (error) logger.error('database', 'Failed to update calendar credentials', error);

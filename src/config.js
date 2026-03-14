@@ -42,6 +42,9 @@ module.exports = {
   cron: {
     secret: process.env.CRON_SECRET || '',
   },
+  encryption: {
+    key: process.env.ENCRYPTION_KEY,
+  },
   baseUrl: process.env.BASE_URL || 'http://localhost:3000',
   port: process.env.PORT || 3000,
 };
