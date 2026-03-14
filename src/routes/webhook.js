@@ -533,7 +533,12 @@ async function executeAction(userId, chatId, aiResponse) {
         const token = await generateConnectToken(userId);
         const p = provider === 'google' ? 'g' : provider === 'apple' ? 'a' : 'x';
         const connectUrl = `${config.baseUrl}/c/${token}/${p}`;
-        const msg = connectUrl;
+        let msg;
+        if (provider === 'apple') {
+          msg = `🍎 לחיבור Apple Calendar:\n\nקודם צריך ליצור סיסמה ייעודית:\n1. תכנס ל-appleid.apple.com\n2. Sign-In and Security\n3. App-Specific Passwords\n4. לחץ + ותן שם "מזכיר"\n5. העתק את הסיסמה\n\nאחרי זה לחץ כאן:\n${connectUrl}`;
+        } else {
+          msg = `📗 לחיבור Google Calendar:\n${connectUrl}`;
+        }
         await greenApi.sendMessage(chatId, msg);
         return msg;
       }
