@@ -533,11 +533,8 @@ async function executeAction(userId, chatId, aiResponse) {
         const token = await generateConnectToken(userId);
         const p = provider === 'google' ? 'g' : provider === 'apple' ? 'a' : 'x';
         const shortUrl = `maztary.com/c/${token}/${p}`;
-        if (provider === 'apple') {
-          await greenApi.sendMessage(chatId, `🍎 לחיבור Apple Calendar:\n\nקודם צריך ליצור סיסמה ייעודית:\n1. תכנס ל-appleid.apple.com\n2. Sign-In and Security\n3. App-Specific Passwords\n4. לחץ + ותן שם "מזכיר"\n5. העתק את הסיסמה\n\nאחרי זה לחץ על הלינק הבא:`);
-        } else {
-          await greenApi.sendMessage(chatId, `📗 לחיבור Google Calendar לחץ על הלינק הבא:`);
-        }
+        const label = provider === 'apple' ? '🍎 Apple Calendar' : '📗 Google Calendar';
+        await greenApi.sendMessage(chatId, `לחץ על הלינק לחיבור ${label}:`);
         await greenApi.sendMessage(chatId, shortUrl);
         return shortUrl;
       }
