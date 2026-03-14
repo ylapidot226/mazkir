@@ -135,17 +135,32 @@ async function createEvent(credentials, calendarUrl, event) {
 }
 
 /**
- * Delete an event from Apple Calendar
+ * Delete an event from Apple Calendar by UID
  */
-async function deleteEvent(credentials, calendarUrl, eventUrl) {
+async function deleteEvent(credentials, calendarUrl, eventUid) {
   try {
     const client = await getClient(credentials);
+    const calendars = await client.fetchCalendars();
+    const calendar = calendars.find((c) => c.url === calendarUrl) || calendars[0];
 
-    await client.deleteCalendarObject({
-      calendarObject: { url: eventUrl, etag: '' },
+    if (!calendar) return;
+
+    // Fetch all events and find the one matching the UID
+    const objects = await client.fetchCalendarObjects({ calendar });
+    const target = objects.find((obj) => {
+      if (!obj.data) return false;
+      const uidMatch = obj.data.match(/UID[^:]*:(.+)/i);
+      return uidMatch && uidMatch[1].trim() === eventUid;
     });
 
-    logger.info('apple', 'Event deleted', { eventUrl });
+    if (target) {
+      await client.deleteCalendarObject({
+        calendarObject: target,
+      });
+      logger.info('apple', 'Event deleted', { eventUid });
+    } else {
+      logger.warn('apple', 'Event not found for deletion', { eventUid });
+    }
   } catch (error) {
     logger.error('apple', 'Failed to delete event', { error: error.message });
   }
