@@ -350,7 +350,10 @@ async function executeAction(userId, chatId, aiResponse) {
 
         if (!msg) {
           const emptyLabels = { today: 'אין לך אירועים היום', tomorrow: 'אין לך אירועים מחר', specific_day: 'אין לך אירועים ביום הזה', week: 'אין לך אירועים השבוע' };
-          msg = (emptyLabels[range] || 'אין לך אירועים') + ' 📅';
+          msg = response || (emptyLabels[range] || 'אין לך אירועים') + ' 📅';
+        } else if (response) {
+          // Add Claude's contextual response before the event list
+          msg = `${response}\n\n${msg}`;
         }
         await greenApi.sendMessage(chatId, msg);
         return msg;
