@@ -22,3 +22,13 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS source TEXT CHECK (source IN ('whats
 CREATE INDEX IF NOT EXISTS idx_calendar_connections_user ON calendar_connections(user_id);
 CREATE INDEX IF NOT EXISTS idx_events_external_id ON events(external_id);
 CREATE INDEX IF NOT EXISTS idx_events_source ON events(user_id, source);
+
+-- 4. Connect tokens table (for serverless OAuth flow)
+CREATE TABLE IF NOT EXISTS connect_tokens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  token TEXT UNIQUE NOT NULL,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_connect_tokens_token ON connect_tokens(token);

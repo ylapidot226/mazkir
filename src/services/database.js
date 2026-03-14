@@ -756,6 +756,45 @@ async function getStats() {
   };
 }
 
+// ---- Connect Tokens (for calendar OAuth flow) ----
+
+async function saveConnectToken(token, userId) {
+  // Clean up expired tokens first
+  await supabase
+    .from('connect_tokens')
+    .delete()
+    .lt('created_at', new Date(Date.now() - 15 * 60 * 1000).toISOString());
+
+  const { error } = await supabase
+    .from('connect_tokens')
+    .insert({ token, user_id: userId });
+
+  if (error) {
+    logger.error('database', 'Failed to save connect token', error);
+    throw error;
+  }
+}
+
+async function getConnectToken(token) {
+  const { data, error } = await supabase
+    .from('connect_tokens')
+    .select('*')
+    .eq('token', token)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    logger.error('database', 'Failed to get connect token', error);
+  }
+  return data;
+}
+
+async function deleteConnectToken(token) {
+  await supabase
+    .from('connect_tokens')
+    .delete()
+    .eq('token', token);
+}
+
 // ---- Calendar Connections ----
 
 async function saveCalendarConnection(userId, provider, credentials, calendarId) {
@@ -1004,6 +1043,9 @@ module.exports = {
   saveMessage,
   getRecentMessages,
   getStats,
+  saveConnectToken,
+  getConnectToken,
+  deleteConnectToken,
   saveCalendarConnection,
   getCalendarConnection,
   getUserCalendarConnections,

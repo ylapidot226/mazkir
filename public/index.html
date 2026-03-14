@@ -986,8 +986,10 @@
     const name = document.getElementById('nameInput').value.trim();
     const email = document.getElementById('emailInput').value.trim();
     const countryCode = document.getElementById('countryCode').value;
-    let phone = document.getElementById('phoneInput').value.trim().replace(/[\s\-()]/g, '');
+    let phone = document.getElementById('phoneInput').value.trim().replace(/[\s\-()+]/g, '');
     if (phone.startsWith('0')) phone = phone.substring(1);
+    // Avoid double country code (e.g. user types +972-55-... with 972 selected)
+    if (phone.startsWith(countryCode)) phone = phone.substring(countryCode.length);
     phone = countryCode + phone;
 
     if (!name || !email || !phone) return;

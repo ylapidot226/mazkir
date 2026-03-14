@@ -141,6 +141,9 @@ router.put('/users/:id/phone', adminLimiter, requireAuth, async (req, res) => {
     let normalizedPhone = phone.replace(/[\s\-()+]/g, '');
     if (normalizedPhone.startsWith('0')) {
       normalizedPhone = '972' + normalizedPhone.substring(1);
+    } else if (normalizedPhone.startsWith('972972')) {
+      // Fix double country code
+      normalizedPhone = normalizedPhone.substring(3);
     }
     if (!/^\d{8,15}$/.test(normalizedPhone)) {
       return res.status(400).json({ error: 'מספר טלפון לא תקין' });
@@ -196,6 +199,9 @@ router.post('/register', registerLimiter, async (req, res) => {
     let normalizedPhone = phone.replace(/[\s\-()+]/g, '');
     if (normalizedPhone.startsWith('0')) {
       normalizedPhone = '972' + normalizedPhone.substring(1);
+    } else if (normalizedPhone.startsWith('972972')) {
+      // Fix double country code
+      normalizedPhone = normalizedPhone.substring(3);
     }
     // Must be only digits and reasonable length
     if (!/^\d{8,15}$/.test(normalizedPhone)) {
