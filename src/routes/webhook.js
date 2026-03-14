@@ -531,9 +531,9 @@ async function executeAction(userId, chatId, aiResponse) {
       case 'connect_calendar': {
         const provider = content?.toLowerCase() || '';
         const token = generateConnectToken(userId);
-        const connectUrl = `${config.baseUrl}/calendar/connect?token=${token}&provider=${provider}`;
+        const connectUrl = `${config.baseUrl}/cal?t=${token}&p=${provider}`;
         const providerName = provider === 'google' ? 'Google Calendar' : provider === 'apple' ? 'Apple Calendar' : 'לוח השנה';
-        const msg = `🔗 לחץ על הקישור כדי לחבר את ${providerName}:\n\n${connectUrl}\n\nהקישור תקף ל-15 דקות.`;
+        const msg = `🔗 לחץ על הקישור כדי לחבר ${providerName}:\n${connectUrl}`;
         await greenApi.sendMessage(chatId, msg);
         return msg;
       }

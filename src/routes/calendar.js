@@ -14,7 +14,7 @@ const connectTokens = new Map();
  * Called from webhook when user says "חבר לוח שנה"
  */
 function generateConnectToken(userId) {
-  const token = crypto.randomBytes(32).toString('hex');
+  const token = crypto.randomBytes(8).toString('hex');
   connectTokens.set(token, {
     userId,
     createdAt: Date.now(),

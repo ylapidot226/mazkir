@@ -45,6 +45,12 @@ app.use('/webhook', webhookRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/calendar', calendarRoutes);
 
+// Short URL redirect for calendar connect (keeps WhatsApp links clickable)
+app.get('/cal', (req, res) => {
+  const { t, p } = req.query;
+  res.redirect(`/calendar/connect?token=${t || ''}&provider=${p || ''}`);
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
