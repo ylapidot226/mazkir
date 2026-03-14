@@ -274,15 +274,11 @@ async function executeAction(userId, chatId, aiResponse) {
       }
 
       case 'query_events': {
-        // Determine date range from AI response
-        const range = aiResponse.range || 'all'; // 'today', 'tomorrow', 'week', 'all'
-        const daysAhead = range === 'today' ? 0 : range === 'tomorrow' ? 1 : range === 'week' ? 7 : null;
-        const startDaysAhead = range === 'tomorrow' ? 1 : 0;
-        const events = await db.getUpcomingEvents(userId, daysAhead, startDaysAhead);
+        const range = aiResponse.range || 'all';
+        const startDate = aiResponse.start_date || null;
+        const endDate = aiResponse.end_date || null;
+        const events = await db.getUpcomingEventsByDateRange(userId, startDate, endDate);
         const recurring = await db.getUserRecurringEvents(userId);
-
-        // Collect recurring event titles to detect duplicates
-        const recurringTitles = new Set(recurring.map((r) => r.title.trim().toLowerCase()));
 
         let msg = '';
 
@@ -292,22 +288,27 @@ async function executeAction(userId, chatId, aiResponse) {
             const loc = e.location ? ` 📍 ${e.location}` : '';
             return `• ${e.title} - ${f.full}${loc}`;
           }).join('\n');
-          const label = range === 'today' ? 'אירועים להיום' : range === 'tomorrow' ? 'אירועים למחר' : range === 'week' ? 'אירועים השבוע' : 'אירועים קרובים';
-          msg += `📅 ${label}:\n\n${formatted}`;
+          const labels = { today: 'אירועים להיום', tomorrow: 'אירועים למחר', week: 'אירועים לשבוע הקרוב', specific_day: 'אירועים', all: 'אירועים קרובים' };
+          msg += `📅 ${labels[range] || 'אירועים'}:\n\n${formatted}`;
         }
 
-        // Only show recurring events if not asking about today specifically
-        if (range !== 'today' && recurring.length > 0) {
+        // Show recurring events filtered by the relevant days in the date range
+        if (recurring.length > 0 && startDate) {
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+          const start = new Date(startDate);
+          const end = endDate ? new Date(endDate) : new Date(start.getTime() + 24 * 60 * 60 * 1000);
 
-          // For "tomorrow", filter recurring events to only those that occur on tomorrow's day
-          let filteredRecurring = recurring;
-          if (range === 'tomorrow') {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowDay = tomorrow.getDay().toString(); // 0=Sunday
-            filteredRecurring = recurring.filter((r) => r.days.split(',').map((d) => d.trim()).includes(tomorrowDay));
+          // Collect all day-of-week numbers in the date range
+          const daysInRange = new Set();
+          const cursor = new Date(start);
+          while (cursor <= end) {
+            daysInRange.add(cursor.getDay().toString());
+            cursor.setDate(cursor.getDate() + 1);
           }
+
+          const filteredRecurring = recurring.filter((r) =>
+            r.days.split(',').some((d) => daysInRange.has(d.trim()))
+          );
 
           if (filteredRecurring.length > 0) {
             const formatted = filteredRecurring.map((r) => {
@@ -317,9 +318,21 @@ async function executeAction(userId, chatId, aiResponse) {
             }).join('\n');
             msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
           }
+        } else if (recurring.length > 0 && !startDate) {
+          // No date filter - show all recurring
+          const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+          const formatted = recurring.map((r) => {
+            const days = r.days.split(',').map((d) => dayNames[parseInt(d.trim())] || d.trim()).join(', ');
+            const loc = r.location ? ` 📍 ${r.location}` : '';
+            return `• ${r.title} - כל יום ${days} ב-${r.time}${loc}`;
+          }).join('\n');
+          msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
         }
 
-        if (!msg) msg = range === 'today' ? 'אין לך אירועים היום 📅' : range === 'tomorrow' ? 'אין לך אירועים מחר 📅' : 'אין לך אירועים 📅';
+        if (!msg) {
+          const emptyLabels = { today: 'אין לך אירועים היום', tomorrow: 'אין לך אירועים מחר', specific_day: 'אין לך אירועים ביום הזה', week: 'אין לך אירועים השבוע' };
+          msg = (emptyLabels[range] || 'אין לך אירועים') + ' 📅';
+        }
         await greenApi.sendMessage(chatId, msg);
         return msg;
       }

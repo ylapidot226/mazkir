@@ -174,6 +174,33 @@ async function getUpcomingEvents(userId, daysAhead = null, startDaysAhead = 0) {
 }
 
 /**
+ * Get upcoming events by explicit date range (ISO strings)
+ */
+async function getUpcomingEventsByDateRange(userId, startDate = null, endDate = null) {
+  const startISO = startDate || getStartOfTodayIsrael().toISOString();
+
+  let query = supabase
+    .from('events')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('datetime', startISO);
+
+  if (endDate) {
+    query = query.lte('datetime', endDate);
+  }
+
+  query = query.order('datetime', { ascending: true }).limit(20);
+
+  const { data, error } = await query;
+
+  if (error) {
+    logger.error('database', 'Failed to get events by date range', error);
+    throw error;
+  }
+  return data || [];
+}
+
+/**
  * Get start of today in Israel timezone as a UTC Date object
  */
 function getStartOfTodayIsrael() {
@@ -732,6 +759,7 @@ module.exports = {
   getAllUsers,
   addEvent,
   getUpcomingEvents,
+  getUpcomingEventsByDateRange,
   deleteEventByContent,
   deleteAllEvents,
   deleteTaskByContent,
