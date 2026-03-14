@@ -275,9 +275,10 @@ async function executeAction(userId, chatId, aiResponse) {
 
       case 'query_events': {
         // Determine date range from AI response
-        const range = aiResponse.range || 'all'; // 'today', 'week', 'all'
-        const daysAhead = range === 'today' ? 0 : range === 'week' ? 7 : null;
-        const events = await db.getUpcomingEvents(userId, daysAhead);
+        const range = aiResponse.range || 'all'; // 'today', 'tomorrow', 'week', 'all'
+        const daysAhead = range === 'today' ? 0 : range === 'tomorrow' ? 1 : range === 'week' ? 7 : null;
+        const startDaysAhead = range === 'tomorrow' ? 1 : 0;
+        const events = await db.getUpcomingEvents(userId, daysAhead, startDaysAhead);
         const recurring = await db.getUserRecurringEvents(userId);
 
         // Collect recurring event titles to detect duplicates
@@ -291,22 +292,34 @@ async function executeAction(userId, chatId, aiResponse) {
             const loc = e.location ? ` 📍 ${e.location}` : '';
             return `• ${e.title} - ${f.full}${loc}`;
           }).join('\n');
-          const label = range === 'today' ? 'אירועים להיום' : range === 'week' ? 'אירועים השבוע' : 'אירועים קרובים';
+          const label = range === 'today' ? 'אירועים להיום' : range === 'tomorrow' ? 'אירועים למחר' : range === 'week' ? 'אירועים השבוע' : 'אירועים קרובים';
           msg += `📅 ${label}:\n\n${formatted}`;
         }
 
         // Only show recurring events if not asking about today specifically
         if (range !== 'today' && recurring.length > 0) {
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-          const formatted = recurring.map((r) => {
-            const days = r.days.split(',').map((d) => dayNames[parseInt(d.trim())] || d.trim()).join(', ');
-            const loc = r.location ? ` 📍 ${r.location}` : '';
-            return `• ${r.title} - כל יום ${days} ב-${r.time}${loc}`;
-          }).join('\n');
-          msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
+
+          // For "tomorrow", filter recurring events to only those that occur on tomorrow's day
+          let filteredRecurring = recurring;
+          if (range === 'tomorrow') {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tomorrowDay = tomorrow.getDay().toString(); // 0=Sunday
+            filteredRecurring = recurring.filter((r) => r.days.split(',').map((d) => d.trim()).includes(tomorrowDay));
+          }
+
+          if (filteredRecurring.length > 0) {
+            const formatted = filteredRecurring.map((r) => {
+              const days = r.days.split(',').map((d) => dayNames[parseInt(d.trim())] || d.trim()).join(', ');
+              const loc = r.location ? ` 📍 ${r.location}` : '';
+              return `• ${r.title} - כל יום ${days} ב-${r.time}${loc}`;
+            }).join('\n');
+            msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
+          }
         }
 
-        if (!msg) msg = range === 'today' ? 'אין לך אירועים היום 📅' : 'אין לך אירועים 📅';
+        if (!msg) msg = range === 'today' ? 'אין לך אירועים היום 📅' : range === 'tomorrow' ? 'אין לך אירועים מחר 📅' : 'אין לך אירועים 📅';
         await greenApi.sendMessage(chatId, msg);
         return msg;
       }
@@ -481,6 +494,17 @@ async function executeAction(userId, chatId, aiResponse) {
 
       default:
         logger.warn('webhook', 'Unknown action', { action });
+    }
+
+    // Execute additional actions if present (e.g. task linked to an event)
+    if (aiResponse.additional_actions && Array.isArray(aiResponse.additional_actions)) {
+      for (const extra of aiResponse.additional_actions) {
+        try {
+          await executeAction(userId, chatId, { ...extra, response: null });
+        } catch (err) {
+          logger.warn('webhook', 'Failed to execute additional action', { action: extra.action, error: err.message });
+        }
+      }
     }
 
     const finalResponse = response || (action !== 'chat' ? 'בוצע! ✅' : null);

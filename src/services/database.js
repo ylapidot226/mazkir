@@ -145,15 +145,16 @@ async function addEvent(userId, title, datetime, location) {
   return data;
 }
 
-async function getUpcomingEvents(userId, daysAhead = null) {
+async function getUpcomingEvents(userId, daysAhead = null, startDaysAhead = 0) {
   // Include events from start of today (Israel time), not just from "now"
-  const startOfTodayISO = getStartOfTodayIsrael().toISOString();
+  const startDate = new Date(getStartOfTodayIsrael().getTime() + startDaysAhead * 24 * 60 * 60 * 1000);
+  const startDateISO = startDate.toISOString();
 
   let query = supabase
     .from('events')
     .select('*')
     .eq('user_id', userId)
-    .gte('datetime', startOfTodayISO);
+    .gte('datetime', startDateISO);
 
   // If daysAhead specified, limit the range (0 = today only, 7 = this week, etc.)
   if (daysAhead !== null) {
