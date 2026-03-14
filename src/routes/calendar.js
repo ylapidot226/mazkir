@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const router = express.Router();
 const db = require('../services/database');
 const googleCalendar = require('../services/googleCalendar');
+const appleCalendar = require('../services/appleCalendar');
 const logger = require('../utils/logger');
 
 // In-memory store for connect tokens (userId -> token, 15 min expiry)
@@ -30,11 +31,11 @@ function generateConnectToken(userId) {
 }
 
 /**
- * GET /calendar/connect?token=xxx
+ * GET /calendar/connect?token=xxx&provider=google|apple
  * Serve the connect calendar page (validates token)
  */
 router.get('/connect', (req, res) => {
-  const { token } = req.query;
+  const { token, provider } = req.query;
 
   if (!token || !connectTokens.has(token)) {
     return res.status(400).send(`
@@ -45,8 +46,7 @@ router.get('/connect', (req, res) => {
     `);
   }
 
-  // Redirect to the static page with the token
-  res.redirect(`/connect-calendar.html?token=${token}`);
+  res.redirect(`/connect-calendar.html?token=${token}&provider=${provider || ''}`);
 });
 
 /**
@@ -61,7 +61,6 @@ router.get('/google/auth', (req, res) => {
   }
 
   const tokenData = connectTokens.get(token);
-  // Store the connect token in the OAuth state so we can retrieve it after callback
   const state = JSON.stringify({ connectToken: token, userId: tokenData.userId });
   const authUrl = googleCalendar.getAuthUrl(state);
 
@@ -92,7 +91,6 @@ router.get('/google/callback', async (req, res) => {
   try {
     const { connectToken, userId } = JSON.parse(state);
 
-    // Validate token
     if (!connectTokens.has(connectToken)) {
       return res.status(400).send(`
         <html dir="rtl"><body style="font-family:sans-serif;text-align:center;padding:50px;">
@@ -102,13 +100,8 @@ router.get('/google/callback', async (req, res) => {
       `);
     }
 
-    // Exchange code for tokens
     const tokens = await googleCalendar.getTokensFromCode(code);
-
-    // Save the connection
     await db.saveCalendarConnection(userId, 'google', JSON.stringify(tokens), 'primary');
-
-    // Remove used connect token
     connectTokens.delete(connectToken);
 
     logger.info('calendar', 'Google Calendar connected', { userId });
@@ -137,8 +130,52 @@ router.get('/google/callback', async (req, res) => {
 });
 
 /**
+ * POST /calendar/apple/connect
+ * Connect Apple Calendar via CalDAV credentials
+ */
+router.post('/apple/connect', async (req, res) => {
+  const { token, appleId, appPassword } = req.body;
+
+  if (!token || !connectTokens.has(token)) {
+    return res.status(400).json({ error: 'הקישור פג תוקף. שלח שוב "חבר לוח שנה" בוואטסאפ.' });
+  }
+
+  if (!appleId || !appPassword) {
+    return res.status(400).json({ error: 'נא למלא Apple ID וסיסמה ייעודית.' });
+  }
+
+  const { userId } = connectTokens.get(token);
+
+  try {
+    // Verify credentials work
+    const result = await appleCalendar.verifyCredentials(appleId, appPassword);
+
+    if (!result.success || result.calendars.length === 0) {
+      return res.status(400).json({ error: 'לא הצלחתי להתחבר. בדוק שה-Apple ID והסיסמה הייעודית נכונים.' });
+    }
+
+    // Save connection with first calendar URL
+    const credentials = JSON.stringify({ appleId, appPassword });
+    const calendarUrl = result.calendars[0].url;
+
+    await db.saveCalendarConnection(userId, 'apple', credentials, calendarUrl);
+    connectTokens.delete(token);
+
+    logger.info('calendar', 'Apple Calendar connected', { userId, calendars: result.calendars.length });
+
+    res.json({
+      success: true,
+      calendars: result.calendars.map((c) => c.displayName),
+    });
+  } catch (error) {
+    logger.error('calendar', 'Apple Calendar connect failed', { error: error.message });
+    res.status(500).json({ error: 'שגיאה בחיבור. נסה שוב.' });
+  }
+});
+
+/**
  * GET /calendar/status?token=xxx
- * Check calendar connection status (for the connect page)
+ * Check calendar connection status
  */
 router.get('/status', async (req, res) => {
   const { token } = req.query;

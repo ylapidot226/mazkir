@@ -5,7 +5,7 @@ const greenApi = require('../services/greenApi');
 const claude = require('../services/claude');
 const db = require('../services/database');
 const { generateConnectToken } = require('./calendar');
-const { pushEventToGoogle, deleteEventFromGoogle } = require('../services/calendarSync');
+const { pushEventToCalendars, deleteEventFromCalendars } = require('../services/calendarSync');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -258,12 +258,12 @@ async function executeAction(userId, chatId, aiResponse) {
           for (const item of items) {
             if (!isValidDatetime(item.datetime)) continue; // (#10)
             const ev = await db.addEvent(userId, item.content || content, item.datetime, item.location || location);
-            if (ev) pushEventToGoogle(userId, ev.id).catch(() => {});
+            if (ev) pushEventToCalendars(userId, ev.id).catch(() => {});
           }
         } else {
           if (!isValidDatetime(datetime)) break; // (#10)
           const ev = await db.addEvent(userId, content, datetime, location);
-          if (ev) pushEventToGoogle(userId, ev.id).catch(() => {});
+          if (ev) pushEventToCalendars(userId, ev.id).catch(() => {});
         }
         break;
 
@@ -429,7 +429,7 @@ async function executeAction(userId, chatId, aiResponse) {
         const count = await db.deleteEventByContent(userId, safeContent);
         if (count > 0) {
           for (const evt of eventsToDelete) {
-            if (evt.external_id) deleteEventFromGoogle(userId, evt.external_id).catch(() => {});
+            if (evt.external_id) deleteEventFromCalendars(userId, evt.external_id, evt.source).catch(() => {});
           }
         }
         let msg;
@@ -529,9 +529,11 @@ async function executeAction(userId, chatId, aiResponse) {
         break;
 
       case 'connect_calendar': {
+        const provider = content?.toLowerCase() || '';
         const token = generateConnectToken(userId);
-        const connectUrl = `${config.baseUrl}/calendar/connect?token=${token}`;
-        const msg = `🔗 לחץ על הקישור כדי לחבר את לוח השנה שלך:\n\n${connectUrl}\n\nהקישור תקף ל-15 דקות.`;
+        const connectUrl = `${config.baseUrl}/calendar/connect?token=${token}&provider=${provider}`;
+        const providerName = provider === 'google' ? 'Google Calendar' : provider === 'apple' ? 'Apple Calendar' : 'לוח השנה';
+        const msg = `🔗 לחץ על הקישור כדי לחבר את ${providerName}:\n\n${connectUrl}\n\nהקישור תקף ל-15 דקות.`;
         await greenApi.sendMessage(chatId, msg);
         return msg;
       }

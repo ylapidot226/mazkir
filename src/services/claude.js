@@ -100,7 +100,10 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - העוזר האישי הכי טוב
 - add_reminder: תזכורת עם שעה ספציפית
 - query_events: שליפת אירועים. חובה: start_date ו-end_date בפורמט ISO 8601 (עם +03:00). חשב לפי התאריך הנוכחי. range רק לתצוגה.
 - delete_event / delete_all_events
-- connect_calendar: כשמשתמש רוצה לחבר לוח שנה (גוגל/אפל). דוגמאות: "חבר לוח שנה", "סנכרן עם גוגל", "חבר את Google Calendar"
+- connect_calendar: כשמשתמש מציין במפורש איזה לוח שנה לחבר. content חייב להיות "google" או "apple". דוגמאות:
+  - "חבר גוגל" / "סנכרן עם גוגל" / "Google Calendar" → connect_calendar, content: "google"
+  - "חבר אפל" / "Apple Calendar" / "לוח שנה של אפל" → connect_calendar, content: "apple"
+  - "חבר לוח שנה" (בלי לציין איזה) → action: "chat", response: "לאיזה לוח שנה תרצה להתחבר?\n\n📗 Google Calendar\n🍎 Apple Calendar"
 - disconnect_calendar: כשמשתמש רוצה לנתק לוח שנה. content צריך לכלול "google" או "apple"
 - chat: שיחה רגילה, ברכות, שאלות, הסברים, שאלות הבהרה
 
