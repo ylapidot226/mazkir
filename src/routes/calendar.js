@@ -11,7 +11,7 @@ const logger = require('../utils/logger');
  * Stored in Supabase so it works across serverless invocations
  */
 async function generateConnectToken(userId) {
-  const token = crypto.randomBytes(8).toString('hex');
+  const token = crypto.randomBytes(4).toString('hex');
   await db.saveConnectToken(token, userId);
   return token;
 }

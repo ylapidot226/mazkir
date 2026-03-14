@@ -46,8 +46,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/calendar', calendarRoutes);
 
 // Short URL redirect for calendar connect (path-based to avoid WhatsApp link breaking)
-app.get('/cal/:token/:provider', (req, res) => {
-  const { token, provider } = req.params;
+app.get('/c/:token/:p', (req, res) => {
+  const { token, p } = req.params;
+  const provider = p === 'g' ? 'google' : p === 'a' ? 'apple' : '';
   res.redirect(`/calendar/connect?token=${token}&provider=${provider}`);
 });
 
