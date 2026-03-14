@@ -111,8 +111,8 @@ async function createEvent(credentials, calendarUrl, event) {
       'PRODID:-//Mazkir//WhatsApp Bot//HE',
       'BEGIN:VEVENT',
       `UID:${uid}`,
-      `DTSTART:${formatICSDate(startDate)}`,
-      `DTEND:${formatICSDate(endDate)}`,
+      `DTSTART;TZID=Asia/Jerusalem:${formatLocalDate(startDate)}`,
+      `DTEND;TZID=Asia/Jerusalem:${formatLocalDate(endDate)}`,
       `SUMMARY:${event.title}`,
       event.location ? `LOCATION:${event.location}` : '',
       `DTSTAMP:${formatICSDate(new Date())}`,
@@ -188,10 +188,24 @@ function parseICS(icsString) {
 }
 
 /**
- * Format a Date as ICS datetime string
+ * Format a Date as ICS datetime string (UTC with Z)
  */
 function formatICSDate(date) {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+/**
+ * Format a Date as local Israel time for ICS (no Z suffix, used with TZID)
+ */
+function formatLocalDate(date) {
+  const il = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const y = il.getFullYear();
+  const m = String(il.getMonth() + 1).padStart(2, '0');
+  const d = String(il.getDate()).padStart(2, '0');
+  const h = String(il.getHours()).padStart(2, '0');
+  const min = String(il.getMinutes()).padStart(2, '0');
+  const s = String(il.getSeconds()).padStart(2, '0');
+  return `${y}${m}${d}T${h}${min}${s}`;
 }
 
 /**
