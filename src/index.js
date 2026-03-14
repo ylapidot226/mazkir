@@ -6,6 +6,7 @@ const config = require('./config');
 const logger = require('./utils/logger');
 const webhookRoutes = require('./routes/webhook');
 const adminRoutes = require('./routes/admin');
+const { router: calendarRoutes } = require('./routes/calendar');
 const { runAllReminders } = require('./services/reminders');
 
 const app = express();
@@ -23,7 +24,7 @@ app.use(helmet({
 // CORS - restrict to own domain (#4)
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://maztary.com', 'https://www.maztary.com']
+    ? ['https://maztary.com', 'https://www.maztary.com', 'https://accounts.google.com']
     : true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
@@ -42,6 +43,7 @@ app.get(config.admin.path, (req, res) => {
 // Routes
 app.use('/webhook', webhookRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/calendar', calendarRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

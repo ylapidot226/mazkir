@@ -34,8 +34,14 @@ module.exports = {
     password: process.env.ADMIN_PASSWORD,
     path: process.env.ADMIN_PATH || '/admin',
   },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/calendar/google/callback',
+  },
   cron: {
     secret: process.env.CRON_SECRET || '',
   },
+  baseUrl: process.env.BASE_URL || 'http://localhost:3000',
   port: process.env.PORT || 3000,
 };

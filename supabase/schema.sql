@@ -74,6 +74,23 @@ CREATE TABLE recurring_events (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Calendar connections table
+CREATE TABLE calendar_connections (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL CHECK (provider IN ('google', 'apple')),
+  credentials TEXT NOT NULL,
+  calendar_id TEXT DEFAULT 'primary',
+  sync_token TEXT,
+  last_synced_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, provider)
+);
+
+-- Add external calendar fields to events table
+ALTER TABLE events ADD COLUMN IF NOT EXISTS external_id TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS source TEXT CHECK (source IN ('whatsapp', 'google', 'apple'));
+
 -- Indexes for performance
 CREATE INDEX idx_recurring_user ON recurring_events(user_id, active);
 CREATE INDEX idx_users_phone ON users(phone_number);
@@ -84,3 +101,5 @@ CREATE INDEX idx_tasks_user_category ON tasks(user_id, category);
 CREATE INDEX idx_shopping_user ON shopping_list(user_id);
 CREATE INDEX idx_reminders_remind_at ON reminders(remind_at, sent);
 CREATE INDEX idx_messages_user ON messages(user_id, created_at DESC);
+CREATE INDEX idx_calendar_connections_user ON calendar_connections(user_id);
+CREATE INDEX idx_events_external_id ON events(external_id);

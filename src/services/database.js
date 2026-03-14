@@ -218,6 +218,15 @@ function getStartOfTodayIsrael() {
   return new Date(israelNow.getTime() - offsetMs);
 }
 
+async function getEventsMatchingContent(userId, content) {
+  const { data } = await supabase
+    .from('events')
+    .select('*')
+    .eq('user_id', userId)
+    .ilike('title', `%${content}%`);
+  return data || [];
+}
+
 async function deleteEventByContent(userId, content) {
   const { data } = await supabase
     .from('events')
@@ -747,6 +756,208 @@ async function getStats() {
   };
 }
 
+// ---- Calendar Connections ----
+
+async function saveCalendarConnection(userId, provider, credentials, calendarId) {
+  // Upsert: if connection exists for this user+provider, update it
+  const existing = await getCalendarConnection(userId, provider);
+  if (existing) {
+    const { error } = await supabase
+      .from('calendar_connections')
+      .update({ credentials, calendar_id: calendarId, sync_token: null, last_synced_at: null })
+      .eq('id', existing.id);
+    if (error) {
+      logger.error('database', 'Failed to update calendar connection', error);
+      throw error;
+    }
+    logger.info('database', 'Calendar connection updated', { userId, provider });
+    return existing;
+  }
+
+  const { data, error } = await supabase
+    .from('calendar_connections')
+    .insert({ user_id: userId, provider, credentials, calendar_id: calendarId })
+    .select()
+    .single();
+
+  if (error) {
+    logger.error('database', 'Failed to save calendar connection', error);
+    throw error;
+  }
+  logger.info('database', 'Calendar connection saved', { userId, provider });
+  return data;
+}
+
+async function getCalendarConnection(userId, provider) {
+  const { data, error } = await supabase
+    .from('calendar_connections')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('provider', provider)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    logger.error('database', 'Failed to get calendar connection', error);
+  }
+  return data;
+}
+
+async function getUserCalendarConnections(userId) {
+  const { data, error } = await supabase
+    .from('calendar_connections')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (error) {
+    logger.error('database', 'Failed to get user calendar connections', error);
+    return [];
+  }
+  return data || [];
+}
+
+async function getAllCalendarConnections() {
+  const { data, error } = await supabase
+    .from('calendar_connections')
+    .select('*');
+
+  if (error) {
+    logger.error('database', 'Failed to get all calendar connections', error);
+    return [];
+  }
+  return data || [];
+}
+
+async function updateCalendarCredentials(connectionId, credentials) {
+  const { error } = await supabase
+    .from('calendar_connections')
+    .update({ credentials })
+    .eq('id', connectionId);
+
+  if (error) logger.error('database', 'Failed to update calendar credentials', error);
+}
+
+async function updateCalendarSyncToken(connectionId, syncToken) {
+  const { error } = await supabase
+    .from('calendar_connections')
+    .update({ sync_token: syncToken, last_synced_at: new Date().toISOString() })
+    .eq('id', connectionId);
+
+  if (error) logger.error('database', 'Failed to update sync token', error);
+}
+
+async function deleteCalendarConnection(userId, provider) {
+  const { error } = await supabase
+    .from('calendar_connections')
+    .delete()
+    .eq('user_id', userId)
+    .eq('provider', provider);
+
+  if (error) {
+    logger.error('database', 'Failed to delete calendar connection', error);
+    throw error;
+  }
+  logger.info('database', 'Calendar connection deleted', { userId, provider });
+}
+
+// ---- Events with External ID support ----
+
+async function getEventByExternalId(userId, externalId) {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('external_id', externalId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    logger.error('database', 'Failed to get event by external ID', error);
+  }
+  return data;
+}
+
+async function getEventById(eventId) {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('id', eventId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    logger.error('database', 'Failed to get event by ID', error);
+  }
+  return data;
+}
+
+async function addEventFromExternal(userId, event) {
+  const { data, error } = await supabase
+    .from('events')
+    .insert({
+      user_id: userId,
+      title: event.title,
+      datetime: event.datetime,
+      location: event.location,
+      external_id: event.external_id,
+      source: event.source,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    logger.error('database', 'Failed to add event from external', error);
+    throw error;
+  }
+  return data;
+}
+
+async function updateEventFromExternal(eventId, updates) {
+  const { error } = await supabase
+    .from('events')
+    .update({
+      title: updates.title,
+      datetime: updates.datetime,
+      location: updates.location,
+    })
+    .eq('id', eventId);
+
+  if (error) logger.error('database', 'Failed to update event from external', error);
+}
+
+async function deleteEventByExternalId(userId, externalId) {
+  const { error } = await supabase
+    .from('events')
+    .delete()
+    .eq('user_id', userId)
+    .eq('external_id', externalId);
+
+  if (error) logger.error('database', 'Failed to delete event by external ID', error);
+}
+
+async function getUnpushedEvents(userId) {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('user_id', userId)
+    .is('external_id', null)
+    .is('source', null)
+    .gte('datetime', new Date().toISOString())
+    .order('datetime', { ascending: true });
+
+  if (error) {
+    logger.error('database', 'Failed to get unpushed events', error);
+    return [];
+  }
+  return data || [];
+}
+
+async function markEventPushed(eventId, externalId, source) {
+  const { error } = await supabase
+    .from('events')
+    .update({ external_id: externalId, source })
+    .eq('id', eventId);
+
+  if (error) logger.error('database', 'Failed to mark event pushed', error);
+}
+
 module.exports = {
   supabase,
   getUser,
@@ -760,6 +971,7 @@ module.exports = {
   addEvent,
   getUpcomingEvents,
   getUpcomingEventsByDateRange,
+  getEventsMatchingContent,
   deleteEventByContent,
   deleteAllEvents,
   deleteTaskByContent,
@@ -792,4 +1004,18 @@ module.exports = {
   saveMessage,
   getRecentMessages,
   getStats,
+  saveCalendarConnection,
+  getCalendarConnection,
+  getUserCalendarConnections,
+  getAllCalendarConnections,
+  updateCalendarCredentials,
+  updateCalendarSyncToken,
+  deleteCalendarConnection,
+  getEventByExternalId,
+  getEventById,
+  addEventFromExternal,
+  updateEventFromExternal,
+  deleteEventByExternalId,
+  getUnpushedEvents,
+  markEventPushed,
 };

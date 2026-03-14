@@ -4,6 +4,8 @@ const router = express.Router();
 const greenApi = require('../services/greenApi');
 const claude = require('../services/claude');
 const db = require('../services/database');
+const { generateConnectToken } = require('./calendar');
+const { pushEventToGoogle, deleteEventFromGoogle } = require('../services/calendarSync');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -200,6 +202,10 @@ function getCondensedHistory(action, sentResponse) {
       return '[הצגתי את רשימת הקניות]';
     case 'query_recurring':
       return '[הצגתי את האירועים החוזרים]';
+    case 'connect_calendar':
+      return '[שלחתי קישור לחיבור לוח שנה]';
+    case 'disconnect_calendar':
+      return '[ניתקתי לוח שנה]';
     default:
       return sentResponse;
   }
@@ -251,11 +257,13 @@ async function executeAction(userId, chatId, aiResponse) {
         if (items && Array.isArray(items) && items.length > 0) {
           for (const item of items) {
             if (!isValidDatetime(item.datetime)) continue; // (#10)
-            await db.addEvent(userId, item.content || content, item.datetime, item.location || location);
+            const ev = await db.addEvent(userId, item.content || content, item.datetime, item.location || location);
+            if (ev) pushEventToGoogle(userId, ev.id).catch(() => {});
           }
         } else {
           if (!isValidDatetime(datetime)) break; // (#10)
-          await db.addEvent(userId, content, datetime, location);
+          const ev = await db.addEvent(userId, content, datetime, location);
+          if (ev) pushEventToGoogle(userId, ev.id).catch(() => {});
         }
         break;
 
@@ -295,13 +303,24 @@ async function executeAction(userId, chatId, aiResponse) {
         // Show recurring events filtered by the relevant days in the date range
         if (recurring.length > 0 && startDate) {
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+
           const start = new Date(startDate);
           const end = endDate ? new Date(endDate) : new Date(start.getTime() + 24 * 60 * 60 * 1000);
 
           // Collect all day-of-week numbers in the date range
+          // Parse date parts directly from ISO string to avoid UTC conversion issues
+          function localDayFromISO(isoStr) {
+            const [y, m, d] = isoStr.substring(0, 10).split('-').map(Number);
+            return new Date(y, m - 1, d).getDay();
+          }
           const daysInRange = new Set();
-          const cursor = new Date(start);
-          while (cursor <= end) {
+          // Walk day by day using date-only strings to stay timezone-safe
+          const startParts = startDate.substring(0, 10).split('-').map(Number);
+          const endISO = endDate || new Date(new Date(startDate).getTime() + 24 * 60 * 60 * 1000).toISOString();
+          const endParts = endISO.substring(0, 10).split('-').map(Number);
+          const cursor = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+          const endLocal = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+          while (cursor <= endLocal) {
             daysInRange.add(cursor.getDay().toString());
             cursor.setDate(cursor.getDate() + 1);
           }
@@ -405,7 +424,14 @@ async function executeAction(userId, chatId, aiResponse) {
 
       case 'delete_event': {
         const safeContent = sanitizeForLike(content); // (#6)
+        // Get events before deletion to sync with Google
+        const eventsToDelete = await db.getEventsMatchingContent(userId, safeContent);
         const count = await db.deleteEventByContent(userId, safeContent);
+        if (count > 0) {
+          for (const evt of eventsToDelete) {
+            if (evt.external_id) deleteEventFromGoogle(userId, evt.external_id).catch(() => {});
+          }
+        }
         let msg;
         if (count > 0) {
           msg = `🗑️ ${count === 1 ? 'האירוע נמחק' : `${count} אירועים נמחקו`} בהצלחה!`;
@@ -501,6 +527,27 @@ async function executeAction(userId, chatId, aiResponse) {
           await db.addReminder(userId, content, datetime);
         }
         break;
+
+      case 'connect_calendar': {
+        const token = generateConnectToken(userId);
+        const connectUrl = `${config.baseUrl}/calendar/connect?token=${token}`;
+        const msg = `🔗 לחץ על הקישור כדי לחבר את לוח השנה שלך:\n\n${connectUrl}\n\nהקישור תקף ל-15 דקות.`;
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
+      case 'disconnect_calendar': {
+        const provider = content?.includes('google') ? 'google' : content?.includes('apple') ? 'apple' : null;
+        if (provider) {
+          await db.deleteCalendarConnection(userId, provider);
+          const msg = `✅ לוח השנה של ${provider === 'google' ? 'Google' : 'Apple'} נותק בהצלחה!`;
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        const msg = 'איזה לוח שנה לנתק? Google או Apple?';
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
 
       case 'chat':
         break;

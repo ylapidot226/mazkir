@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מזכיר - חיבור לוח שנה</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #080808;
+      --accent: #7C3AED;
+      --accent-light: #A78BFA;
+      --text: #F1F1F1;
+      --text-muted: #8B8B8B;
+      --glass-bg: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-border-hover: rgba(255, 255, 255, 0.15);
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      direction: rtl;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 440px;
+      width: 100%;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .logo img {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+    }
+
+    .logo h1 {
+      font-size: 1.5rem;
+      margin-top: 12px;
+      font-weight: 600;
+    }
+
+    .logo p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 6px;
+    }
+
+    .card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      transition: border-color 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: var(--glass-border-hover);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .google-icon { background: rgba(66, 133, 244, 0.15); }
+    .apple-icon { background: rgba(255, 255, 255, 0.08); }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .card-desc {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-google {
+      background: #4285F4;
+      color: white;
+    }
+
+    .btn-google:hover {
+      background: #3574d4;
+    }
+
+    .btn-apple {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      border: 1px solid var(--glass-border);
+    }
+
+    .btn-apple:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-disconnect {
+      background: rgba(239, 68, 68, 0.15);
+      color: #EF4444;
+      font-size: 0.85rem;
+      padding: 10px;
+    }
+
+    .btn-disconnect:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    .connected-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(34, 197, 94, 0.15);
+      color: #22C55E;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-bottom: 12px;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 24px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--glass-border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="/logo.png" alt="מזכיר">
+      <h1>חיבור לוח שנה</h1>
+      <p>חבר את לוח השנה שלך כדי לסנכרן אירועים אוטומטית</p>
+    </div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>טוען...</p>
+    </div>
+
+    <div id="content" style="display:none;">
+      <!-- Google Calendar -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-icon google-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          </div>
+          <div class="card-title">Google Calendar</div>
+        </div>
+        <div id="google-connected" style="display:none;">
+          <div class="connected-badge">&#x2713; מחובר</div>
+          <p class="card-desc">לוח השנה של Google מסונכרן. אירועים חדשים יופיעו בשני הכיוונים.</p>
+          <button class="btn btn-disconnect" onclick="disconnect('google')">נתק את Google Calendar</button>
+        </div>
+        <div id="google-disconnected">
+          <p class="card-desc">חבר את Google Calendar כדי לסנכרן אירועים אוטומטית בין מזכיר ל-Google.</p>
+          <a id="google-auth-btn" class="btn btn-google" href="#">חבר Google Calendar</a>
+        </div>
+      </div>
+
+      <!-- Apple Calendar -->
+      <div class="card" style="opacity:0.5;">
+        <div class="card-header">
+          <div class="card-icon apple-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          </div>
+          <div class="card-title">Apple Calendar</div>
+        </div>
+        <p class="card-desc">בקרוב! חיבור ל-Apple Calendar יהיה זמין בגרסה הבאה.</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>הקישור תקף ל-15 דקות</p>
+    </div>
+  </div>
+
+  <script>
+    const token = new URLSearchParams(window.location.search).get('token');
+
+    if (!token) {
+      document.getElementById('loading').innerHTML = '<p>קישור לא תקין. שלח "חבר לוח שנה" בוואטסאפ.</p>';
+    } else {
+      init();
+    }
+
+    async function init() {
+      try {
+        const res = await fetch(`/calendar/status?token=${token}`);
+        if (!res.ok) {
+          document.getElementById('loading').innerHTML = '<p>הקישור פג תוקף. שלח שוב "חבר לוח שנה" בוואטסאפ.</p>';
+          return;
+        }
+
+        const status = await res.json();
+
+        // Set Google auth link
+        document.getElementById('google-auth-btn').href = `/calendar/google/auth?token=${token}`;
+
+        // Show connection status
+        if (status.google) {
+          document.getElementById('google-connected').style.display = 'block';
+          document.getElementById('google-disconnected').style.display = 'none';
+        }
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+      } catch (err) {
+        document.getElementById('loading').innerHTML = '<p>שגיאה בטעינה. נסה שוב.</p>';
+      }
+    }
+
+    async function disconnect(provider) {
+      if (!confirm(`לנתק את ${provider === 'google' ? 'Google Calendar' : 'Apple Calendar'}?`)) return;
+
+      try {
+        const res = await fetch('/calendar/disconnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, provider }),
+        });
+
+        if (res.ok) {
+          location.reload();
+        }
+      } catch (err) {
+        alert('שגיאה בניתוק');
+      }
+    }
+  </script>
+</body>
+</html>
