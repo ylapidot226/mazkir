@@ -18,1280 +18,406 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --bg:#0a0f14;--bg2:#0d1418;--bg3:#111921;
+      --wa-dark:#0b141a;--wa-panel:#1f2c33;--wa-sent:#005c4b;--wa-input:#202c33;
+      --green:#25d366;--green2:#1ebe5d;--green-dim:rgba(37,211,102,.12);--green-glow:rgba(37,211,102,.25);
+      --teal:#075e54;--blue-check:#53bdeb;
+      --text:#e9edef;--muted:#8696a0;--faint:rgba(255,255,255,.06);
+      --glass:rgba(255,255,255,.04);--border:rgba(255,255,255,.07);--border-h:rgba(37,211,102,.25);
+      --radius:16px;
+    }
+    html{scroll-behavior:smooth}
+    body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);direction:rtl;overflow-x:hidden;line-height:1.7;-webkit-font-smoothing:antialiased}
 
-    :root {
-      --bg: #0B141A;
-      --bg-secondary: #111B21;
-      --card-bg: rgba(255, 255, 255, 0.05);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --card-border-hover: rgba(37, 211, 102, 0.3);
-      --primary: #25D366;
-      --primary-dark: #075E54;
-      --primary-light: #DCF8C6;
-      --primary-glow: rgba(37, 211, 102, 0.25);
-      --text: #E9EDEF;
-      --text-muted: #8696A0;
-      --sent-bg: #005C4B;
-      --received-bg: #1F2C33;
-    }
+    /* ── BG Atmosphere ── */
+    .atmos{position:fixed;inset:0;z-index:-1;pointer-events:none}
+    .atmos i{position:absolute;border-radius:50%;filter:blur(100px);animation:drift 20s ease-in-out infinite alternate}
+    .atmos i:nth-child(1){width:55vw;height:55vw;background:rgba(37,211,102,.05);top:-20%;right:-15%;animation-duration:28s}
+    .atmos i:nth-child(2){width:45vw;height:45vw;background:rgba(7,94,84,.06);bottom:-10%;left:-10%;animation-duration:34s;animation-direction:alternate-reverse}
+    .atmos i:nth-child(3){width:30vw;height:30vw;background:rgba(52,183,241,.03);top:40%;left:50%;animation-duration:24s}
+    @keyframes drift{to{transform:translate(60px,-60px) scale(1.08)}}
 
-    html { scroll-behavior: smooth; }
+    .container{max-width:1120px;margin:0 auto;padding:0 1.5rem}
 
-    body {
-      font-family: 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      direction: rtl;
-      overflow-x: hidden;
-      line-height: 1.7;
-    }
+    /* ── NAV ── */
+    .nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:.65rem 0;background:rgba(10,15,20,.6);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--border);transition:background .4s}
+    .nav.scrolled{background:rgba(10,15,20,.92)}
+    .nav .container{display:flex;justify-content:space-between;align-items:center}
+    .nav-brand{display:flex;align-items:center;gap:.45rem;text-decoration:none}
+    .nav-brand img{height:32px;border-radius:8px}
+    .nav-brand span{font-weight:800;font-size:1.15rem;color:#fff}
+    .nav-links{display:flex;align-items:center;gap:1.6rem}
+    .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;transition:color .2s}
+    .nav-links a:hover{color:#fff}
+    .cta-pill{padding:.5rem 1.3rem;background:var(--green);color:#fff;border:none;border-radius:100px;font-weight:700;font-size:.88rem;cursor:pointer;font-family:inherit;transition:all .25s;text-decoration:none;display:inline-block}
+    .cta-pill:hover{background:var(--green2);box-shadow:0 4px 24px var(--green-glow);transform:translateY(-1px)}
 
-    /* Ambient background */
-    .bg-ambient {
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      overflow: hidden;
-    }
-    .bg-ambient::before {
-      content: '';
-      position: absolute;
-      width: 700px;
-      height: 700px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(37, 211, 102, 0.07), transparent 70%);
-      top: -250px;
-      right: -200px;
-      animation: ambientFloat1 25s ease-in-out infinite;
-    }
-    .bg-ambient::after {
-      content: '';
-      position: absolute;
-      width: 600px;
-      height: 600px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(7, 94, 84, 0.1), transparent 70%);
-      bottom: -150px;
-      left: -150px;
-      animation: ambientFloat2 30s ease-in-out infinite;
-    }
-    @keyframes ambientFloat1 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      50% { transform: translate(-100px, 100px) scale(1.1); }
-    }
-    @keyframes ambientFloat2 {
-      0%, 100% { transform: translate(0, 0) scale(1); }
-      50% { transform: translate(80px, -80px) scale(1.05); }
-    }
+    /* ── HERO ── */
+    .hero{min-height:100vh;min-height:100svh;display:flex;align-items:center;padding:6rem 0 4rem;position:relative}
+    .hero .container{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;align-items:center;width:100%}
+    .hero-txt{position:relative;z-index:2}
+    .badge{display:inline-flex;align-items:center;gap:.45rem;padding:.35rem 1rem;border-radius:100px;background:var(--green-dim);font-size:.82rem;color:var(--green);font-weight:600;margin-bottom:1.6rem;border:1px solid rgba(37,211,102,.15)}
+    .badge i{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .hero h1{font-size:clamp(2.4rem,5.5vw,4rem);font-weight:900;line-height:1.15;margin-bottom:1.2rem;letter-spacing:-.02em}
+    .hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--green),#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero-sub{font-size:1.1rem;color:var(--muted);max-width:460px;margin-bottom:2.5rem;line-height:1.85}
+    .hero-cta{display:inline-flex;align-items:center;gap:.6rem;padding:.95rem 2.4rem;background:var(--green);color:#fff;border:none;border-radius:100px;font-size:1.05rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .3s;text-decoration:none;box-shadow:0 6px 32px var(--green-glow)}
+    .hero-cta:hover{background:var(--green2);transform:translateY(-3px);box-shadow:0 12px 48px rgba(37,211,102,.35)}
+    .hero-cta svg{width:18px;height:18px;transition:transform .3s}
+    .hero-cta:hover svg{transform:translateX(-5px)}
 
-    /* Container */
-    .container {
-      max-width: 1140px;
-      margin: 0 auto;
-      padding: 0 1.5rem;
-    }
+    /* ── PHONE ── */
+    .phone-wrap{display:flex;justify-content:center;perspective:1200px}
+    .phone{width:310px;background:var(--wa-dark);border-radius:36px;overflow:hidden;position:relative;transform:rotateY(-6deg) rotateX(2deg);transition:transform .7s cubic-bezier(.16,1,.3,1);box-shadow:0 40px 100px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04),inset 0 0 0 1px rgba(255,255,255,.04),0 0 80px rgba(37,211,102,.06)}
+    .phone:hover{transform:rotateY(-1deg) rotateX(.5deg)}
+    .phone::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#000;border-radius:0 0 14px 14px;z-index:10}
+    .ph-head{background:var(--wa-panel);padding:.6rem .8rem;display:flex;align-items:center;gap:.6rem;margin-top:26px}
+    .ph-ava{width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0}
+    .ph-ava img{width:100%;height:100%;object-fit:cover}
+    .ph-info{flex:1}
+    .ph-name{font-size:.88rem;font-weight:600;color:var(--text)}
+    .ph-stat{font-size:.68rem;color:var(--green)}
+    .ph-msgs{padding:.6rem;min-height:320px;max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem;background:var(--wa-dark)}
+    .ph-msgs::-webkit-scrollbar{width:0}
+    .bub{max-width:86%;padding:.4rem .55rem;border-radius:8px;font-size:.78rem;line-height:1.5;opacity:0;transform:translateY(12px) scale(.92)}
+    .bub.show{opacity:1;transform:none;animation:pop .35s cubic-bezier(.2,.9,.3,1.3)}
+    @keyframes pop{0%{opacity:0;transform:translateY(12px) scale(.88)}60%{transform:translateY(-2px) scale(1.02)}100%{opacity:1;transform:none}}
+    .bub.s{background:var(--wa-sent);color:var(--text);align-self:flex-end;border-bottom-right-radius:2px}
+    .bub.r{background:var(--wa-panel);color:var(--text);align-self:flex-start;border-bottom-left-radius:2px}
+    .bub .t{font-size:.58rem;color:rgba(255,255,255,.35);text-align:left;margin-top:.1rem;display:flex;justify-content:flex-end;gap:.15rem}
+    .bub.s .t .ck{color:var(--blue-check)}
+    .dots{align-self:flex-start;background:var(--wa-panel);padding:.5rem .7rem;border-radius:8px;display:flex;gap:.2rem;opacity:0;transition:opacity .25s}
+    .dots.on{opacity:1}
+    .dots b{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:dot 1.2s infinite}
+    .dots b:nth-child(2){animation-delay:.15s}
+    .dots b:nth-child(3){animation-delay:.3s}
+    @keyframes dot{0%,70%,100%{transform:translateY(0);opacity:.35}35%{transform:translateY(-3px);opacity:1}}
+    .ph-bar{background:var(--wa-panel);padding:.4rem .5rem;display:flex;align-items:center;gap:.4rem}
+    .ph-bar-in{flex:1;background:var(--faint);border:none;border-radius:20px;padding:.42rem .8rem;color:var(--muted);font-size:.75rem;font-family:inherit;direction:rtl}
+    .ph-bar-btn{width:34px;height:34px;border-radius:50%;background:var(--green);border:none;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
 
-    /* ===== NAVIGATION ===== */
-    nav {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 100;
-      padding: 0.8rem 0;
-      background: rgba(11, 20, 26, 0.75);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--card-border);
-      transition: background 0.3s;
-    }
-    nav .container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      text-decoration: none;
-    }
-    .nav-logo img {
-      height: 36px;
-      border-radius: 10px;
-    }
-    .nav-logo span {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 2rem;
-    }
-    .nav-links a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover { color: var(--text); }
-    .nav-cta {
-      padding: 0.55rem 1.4rem;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 24px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-family: inherit;
-      text-decoration: none;
-    }
-    .nav-cta:hover {
-      background: #1ebe5d;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 20px var(--primary-glow);
-    }
+    /* ── STATS ── */
+    .stats{padding:3rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg2)}
+    .stats-row{display:flex;justify-content:center;align-items:center;gap:3rem;flex-wrap:wrap}
+    .stat{text-align:center}
+    .stat strong{display:block;font-size:1.6rem;font-weight:900;color:var(--green)}
+    .stat span{font-size:.82rem;color:var(--muted)}
+    .stat-sep{width:1px;height:36px;background:var(--border)}
 
-    /* ===== HERO ===== */
-    .hero {
-      padding: 9rem 0 5rem;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4rem;
-      align-items: center;
-    }
-    .hero-content { position: relative; z-index: 2; }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.4rem 1rem;
-      background: rgba(37, 211, 102, 0.1);
-      border: 1px solid rgba(37, 211, 102, 0.2);
-      border-radius: 100px;
-      font-size: 0.85rem;
-      color: var(--primary);
-      margin-bottom: 1.5rem;
-      font-weight: 500;
-    }
-    .hero-badge::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--primary);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.3); }
-    }
-    .hero h1 {
-      font-size: clamp(2.4rem, 5vw, 3.8rem);
-      font-weight: 800;
-      line-height: 1.2;
-      margin-bottom: 1.2rem;
-      color: #fff;
-    }
-    .hero h1 .highlight {
-      background: linear-gradient(135deg, var(--primary), #1ebe5d);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero-subtitle {
-      font-size: 1.15rem;
-      color: var(--text-muted);
-      margin-bottom: 2.5rem;
-      font-weight: 400;
-      max-width: 500px;
-      line-height: 1.8;
-    }
-    .hero-cta {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 1rem 2.2rem;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 50px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-family: inherit;
-      text-decoration: none;
-      box-shadow: 0 4px 25px var(--primary-glow);
-    }
-    .hero-cta:hover {
-      background: #1ebe5d;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 40px rgba(37, 211, 102, 0.35);
-    }
-    .hero-cta svg {
-      width: 20px;
-      height: 20px;
-      transition: transform 0.3s;
-    }
-    .hero-cta:hover svg {
-      transform: translateX(-4px);
-    }
+    /* ── SECTION COMMON ── */
+    .sec{padding:5.5rem 0}
+    .sec-tag{text-align:center;font-size:.8rem;color:var(--green);letter-spacing:2px;font-weight:700;margin-bottom:.6rem}
+    .sec-h{text-align:center;font-size:clamp(1.7rem,3.5vw,2.5rem);font-weight:900;margin-bottom:.6rem;color:#fff}
+    .sec-sub{text-align:center;color:var(--muted);max-width:520px;margin:0 auto 3.5rem;font-size:1rem}
 
-    /* ===== PHONE MOCKUP ===== */
-    .phone-wrapper {
-      display: flex;
-      justify-content: center;
-      perspective: 1000px;
-    }
-    .phone-mockup {
-      width: 320px;
-      background: var(--bg-secondary);
-      border-radius: 32px;
-      overflow: hidden;
-      box-shadow:
-        0 25px 80px rgba(0, 0, 0, 0.5),
-        0 0 0 1px rgba(255, 255, 255, 0.05),
-        0 0 60px rgba(37, 211, 102, 0.08);
-      transform: rotateY(-8deg) rotateX(3deg);
-      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-    }
-    .phone-mockup:hover {
-      transform: rotateY(-2deg) rotateX(1deg);
-    }
-    .phone-notch {
-      width: 120px;
-      height: 28px;
-      background: #000;
-      border-radius: 0 0 16px 16px;
-      margin: 0 auto;
-      position: relative;
-      z-index: 5;
-    }
-    .phone-notch::after {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #1a2a33;
-      position: absolute;
-      top: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-    .wa-header {
-      background: var(--received-bg);
-      padding: 0.7rem 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-    }
-    .wa-back {
-      color: var(--text-muted);
-      font-size: 1.2rem;
-    }
-    .wa-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      overflow: hidden;
-    }
-    .wa-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .wa-header-info { flex: 1; }
-    .wa-name { font-size: 0.95rem; font-weight: 600; color: var(--text); }
-    .wa-status { font-size: 0.72rem; color: var(--text-muted); }
-    .wa-messages {
-      padding: 0.8rem;
-      min-height: 340px;
-      max-height: 340px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      background: var(--bg);
-      background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='50' height='50' patternUnits='userSpaceOnUse'%3E%3Cpath d='M25 0 L25 50 M0 25 L50 25' stroke='rgba(255,255,255,0.015)' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23p)'/%3E%3C/svg%3E");
-    }
-    .wa-messages::-webkit-scrollbar { width: 3px; }
-    .wa-messages::-webkit-scrollbar-track { background: transparent; }
-    .wa-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    /* ── FEATURES ── */
+    .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.3rem}
+    .feat{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);padding:1.8rem;position:relative;overflow:hidden;transition:all .4s cubic-bezier(.16,1,.3,1)}
+    .feat::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top center,rgba(37,211,102,.05),transparent 65%);opacity:0;transition:opacity .4s}
+    .feat:hover{border-color:var(--border-h);transform:translateY(-5px);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+    .feat:hover::after{opacity:1}
+    .feat-ico{width:48px;height:48px;border-radius:12px;background:var(--green-dim);display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:1rem;position:relative;z-index:1;animation:bob 3s ease-in-out infinite}
+    .feat:nth-child(even) .feat-ico{animation-delay:1.5s}
+    @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+    .feat h3{font-size:1.05rem;font-weight:700;margin-bottom:.4rem;position:relative;z-index:1}
+    .feat h3 .ck{color:var(--blue-check);font-size:.8rem;margin-right:.25rem;font-weight:400}
+    .feat p{color:var(--muted);font-size:.88rem;line-height:1.7;position:relative;z-index:1}
 
-    .wa-msg {
-      max-width: 88%;
-      padding: 0.45rem 0.6rem;
-      border-radius: 8px;
-      font-size: 0.82rem;
-      line-height: 1.5;
-      opacity: 0;
-      transform: translateY(15px) scale(0.95);
-      position: relative;
-      word-wrap: break-word;
-    }
-    .wa-msg.visible {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      animation: msgPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    @keyframes msgPopIn {
-      0% { opacity: 0; transform: translateY(15px) scale(0.9); }
-      50% { transform: translateY(-3px) scale(1.02); }
-      100% { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    .wa-msg.sent {
-      background: var(--sent-bg);
-      color: var(--text);
-      align-self: flex-end;
-      border-bottom-left-radius: 8px;
-      border-bottom-right-radius: 2px;
-    }
-    .wa-msg.received {
-      background: var(--received-bg);
-      color: var(--text);
-      align-self: flex-start;
-      border-bottom-right-radius: 8px;
-      border-bottom-left-radius: 2px;
-    }
-    .wa-msg .time {
-      font-size: 0.62rem;
-      color: rgba(255, 255, 255, 0.4);
-      text-align: left;
-      margin-top: 0.15rem;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.2rem;
-    }
-    .wa-msg.sent .time .checks { color: #53BDEB; }
-    .wa-input-bar {
-      background: var(--received-bg);
-      padding: 0.5rem 0.6rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .wa-input-field {
-      flex: 1;
-      background: rgba(255, 255, 255, 0.05);
-      border: none;
-      border-radius: 20px;
-      padding: 0.5rem 1rem;
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      font-family: inherit;
-      direction: rtl;
-    }
-    .wa-send-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--primary);
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 1rem;
-      flex-shrink: 0;
-    }
-    .wa-typing {
-      align-self: flex-start;
-      background: var(--received-bg);
-      padding: 0.55rem 0.9rem;
-      border-radius: 8px;
-      display: flex;
-      gap: 0.25rem;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .wa-typing.visible { opacity: 1; }
-    .wa-typing span {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--text-muted);
-      animation: typingDot 1.4s infinite;
-    }
-    .wa-typing span:nth-child(2) { animation-delay: 0.2s; }
-    .wa-typing span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes typingDot {
-      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-      30% { transform: translateY(-4px); opacity: 1; }
-    }
+    /* ── HOW IT WORKS ── */
+    .how{background:var(--bg2)}
+    .steps{max-width:660px;margin:0 auto;position:relative;display:flex;flex-direction:column;gap:2.5rem}
+    .steps::before{content:'';position:absolute;right:25px;top:52px;bottom:52px;width:2px;background:linear-gradient(var(--green),transparent)}
+    .step{display:grid;grid-template-columns:52px 1fr;gap:1.2rem}
+    .step-n{width:52px;height:52px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:var(--green);position:relative;z-index:2;box-shadow:0 0 20px var(--green-glow)}
+    .step-body h3{font-weight:700;font-size:1.1rem;margin-bottom:.35rem}
+    .step-body p{color:var(--muted);font-size:.92rem;margin-bottom:.8rem}
+    .step-demo{background:var(--wa-dark);border-radius:12px;padding:.7rem;border:1px solid var(--border);display:flex;flex-direction:column;gap:.3rem}
+    .step-demo .bub{opacity:1;transform:none;font-size:.78rem;padding:.4rem .55rem}
 
-    /* ===== SOCIAL PROOF ===== */
-    .social-proof {
-      padding: 3.5rem 0;
-      border-top: 1px solid var(--card-border);
-      border-bottom: 1px solid var(--card-border);
-      background: rgba(255, 255, 255, 0.02);
-    }
-    .social-proof-inner {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 2.5rem;
-      flex-wrap: wrap;
-    }
-    .proof-stat {
-      text-align: center;
-    }
-    .proof-stat .number {
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--primary);
-      display: block;
-      font-variant-numeric: tabular-nums;
-    }
-    .proof-stat .label {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      font-weight: 400;
-    }
-    .proof-divider {
-      width: 1px;
-      height: 40px;
-      background: var(--card-border);
-    }
-    .proof-users {
-      display: flex;
-      align-items: center;
-      gap: 0.8rem;
-    }
-    .avatars {
-      display: flex;
-      direction: ltr;
-    }
-    .avatars span {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border: 2px solid var(--bg);
-      margin-right: -10px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #fff;
-    }
-    .avatars span:nth-child(1) { background: linear-gradient(135deg, #25D366, #075E54); z-index: 4; }
-    .avatars span:nth-child(2) { background: linear-gradient(135deg, #128C7E, #25D366); z-index: 3; }
-    .avatars span:nth-child(3) { background: linear-gradient(135deg, #075E54, #128C7E); z-index: 2; }
-    .avatars span:nth-child(4) { background: linear-gradient(135deg, #34B7F1, #075E54); z-index: 1; }
-    .proof-text {
-      font-size: 0.95rem;
-      color: var(--text-muted);
-    }
-    .proof-text strong {
-      color: var(--text);
-      font-weight: 700;
-    }
+    /* ── CTA ── */
+    .cta-wrap{max-width:480px;margin:0 auto;border-radius:20px;padding:2.5rem;background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border);text-align:center;position:relative;overflow:hidden}
+    .cta-wrap::before{content:'';position:absolute;inset:-50%;width:200%;height:200%;background:conic-gradient(from 0deg,transparent,rgba(37,211,102,.06),transparent 30%);animation:spin 10s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .cta-wrap>*{position:relative;z-index:1}
+    .cta-wrap h2{font-size:1.7rem;font-weight:900;margin-bottom:.3rem;color:#fff}
+    .cta-wrap .sub{color:var(--muted);margin-bottom:1.5rem;font-size:.92rem}
+    .fg{margin-bottom:.6rem}
+    .fg input,.fg select{width:100%;padding:.8rem 1rem;background:var(--faint);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:.92rem;font-family:inherit;transition:border .25s;direction:rtl}
+    .fg input::placeholder{color:var(--muted)}
+    .fg input:focus,.fg select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(37,211,102,.12)}
+    .ph-row{display:flex;gap:.4rem;direction:ltr}
+    .ph-row select{width:100px;padding:.8rem .4rem;background:var(--faint);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:.82rem;font-family:inherit}
+    .ph-row select option{background:var(--bg3);color:var(--text)}
+    .ph-row input{flex:1;text-align:left}
+    .sub-btn{width:100%;padding:.9rem;background:var(--green);color:#fff;border:none;border-radius:100px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .25s;margin-top:.3rem;display:flex;align-items:center;justify-content:center;gap:.4rem}
+    .sub-btn:hover{background:var(--green2);transform:translateY(-2px);box-shadow:0 6px 28px var(--green-glow)}
+    .sub-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+    .sub-btn .sp{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .5s linear infinite}
+    .sub-btn.ld .bt{display:none}
+    .sub-btn.ld .sp{display:block}
+    .f-note{color:var(--muted);font-size:.78rem;margin-top:.8rem}
+    .f-ok{display:none;padding:.8rem;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);border-radius:12px;color:var(--green);margin-top:.8rem;font-weight:500}
 
-    /* ===== FEATURES ===== */
-    .features {
-      padding: 6rem 0;
-    }
-    .section-label {
-      text-align: center;
-      font-size: 0.85rem;
-      color: var(--primary);
-      letter-spacing: 2px;
-      margin-bottom: 0.8rem;
-      font-weight: 600;
-    }
-    .section-title {
-      text-align: center;
-      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-      font-weight: 800;
-      margin-bottom: 1rem;
-      color: #fff;
-    }
-    .section-subtitle {
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 1.05rem;
-      max-width: 550px;
-      margin: 0 auto 3.5rem;
-      font-weight: 400;
-    }
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-    }
-    .feature-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 20px;
-      padding: 2rem;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-      overflow: hidden;
-    }
-    .feature-card::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 20px;
-      background: radial-gradient(circle at 50% 0%, rgba(37, 211, 102, 0.06), transparent 60%);
-      opacity: 0;
-      transition: opacity 0.4s;
-    }
-    .feature-card:hover {
-      border-color: var(--card-border-hover);
-      transform: translateY(-6px);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px rgba(37, 211, 102, 0.08);
-    }
-    .feature-card:hover::before { opacity: 1; }
-    .feature-icon {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(37, 211, 102, 0.15), rgba(7, 94, 84, 0.15));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      margin-bottom: 1.2rem;
-      animation: iconFloat 3s ease-in-out infinite;
-      position: relative;
-      z-index: 1;
-    }
-    @keyframes iconFloat {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-5px); }
-    }
-    .feature-card:nth-child(2) .feature-icon { animation-delay: 0.3s; }
-    .feature-card:nth-child(3) .feature-icon { animation-delay: 0.6s; }
-    .feature-card:nth-child(4) .feature-icon { animation-delay: 0.9s; }
-    .feature-card:nth-child(5) .feature-icon { animation-delay: 1.2s; }
-    .feature-card:nth-child(6) .feature-icon { animation-delay: 1.5s; }
-    .feature-card:nth-child(7) .feature-icon { animation-delay: 1.8s; }
-    .feature-card:nth-child(8) .feature-icon { animation-delay: 2.1s; }
-    .feature-card:nth-child(9) .feature-icon { animation-delay: 2.4s; }
-    .feature-card h3 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      color: #fff;
-      position: relative;
-      z-index: 1;
-    }
-    .feature-card h3 .check {
-      color: #53BDEB;
-      font-size: 0.85rem;
-      margin-right: 0.3rem;
-    }
-    .feature-card p {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      line-height: 1.7;
-      font-weight: 400;
-      position: relative;
-      z-index: 1;
-    }
+    /* ── FOOTER ── */
+    footer{padding:2rem 0;text-align:center;border-top:1px solid var(--border);background:rgba(0,0,0,.15)}
+    .foot-brand{display:flex;align-items:center;justify-content:center;gap:.4rem;margin-bottom:.5rem}
+    .foot-brand img{height:26px;border-radius:6px}
+    .foot-brand span{font-weight:800;font-size:1rem;color:var(--text)}
+    footer p{color:var(--muted);font-size:.82rem}
 
-    /* ===== HOW IT WORKS ===== */
-    .how-it-works {
-      padding: 6rem 0;
-      background: rgba(255, 255, 255, 0.01);
-    }
-    .steps {
-      display: flex;
-      flex-direction: column;
-      gap: 3rem;
-      max-width: 700px;
-      margin: 0 auto;
-      position: relative;
-    }
-    .steps::before {
-      content: '';
-      position: absolute;
-      right: 27px;
-      top: 55px;
-      bottom: 55px;
-      width: 2px;
-      background: linear-gradient(to bottom, var(--primary), rgba(37, 211, 102, 0.1));
-    }
-    .step {
-      display: grid;
-      grid-template-columns: 56px 1fr;
-      gap: 1.5rem;
-      align-items: start;
-    }
-    .step-number {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background: var(--bg);
-      border: 2px solid var(--primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 1.2rem;
-      color: var(--primary);
-      box-shadow: 0 0 25px var(--primary-glow);
-      position: relative;
-      z-index: 2;
-    }
-    .step-content h3 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      color: #fff;
-    }
-    .step-content p {
-      color: var(--text-muted);
-      font-size: 0.95rem;
-      margin-bottom: 1rem;
-      font-weight: 400;
-    }
-    .step-chat {
-      background: var(--bg-secondary);
-      border-radius: 14px;
-      padding: 0.8rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      border: 1px solid var(--card-border);
-    }
-    .step-chat .wa-msg {
-      opacity: 1;
-      transform: none;
-      font-size: 0.82rem;
-      padding: 0.45rem 0.6rem;
-    }
+    /* ── SCROLL ANIM ── */
+    .ao{opacity:0;transform:translateY(35px);transition:all .7s cubic-bezier(.16,1,.3,1)}
+    .ao.v{opacity:1;transform:none}
+    .ao.d1{transition-delay:.08s}.ao.d2{transition-delay:.16s}.ao.d3{transition-delay:.24s}.ao.d4{transition-delay:.32s}
 
-    /* ===== CTA / SIGNUP ===== */
-    .cta-section {
-      padding: 6rem 0;
+    /* ── RESPONSIVE ── */
+    @media(max-width:960px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:768px){
+      .hero .container{grid-template-columns:1fr;text-align:center;gap:2rem}
+      .hero-sub{margin-left:auto;margin-right:auto}
+      .hero-cta{margin:0 auto}
+      .phone{width:280px;transform:none}.phone:hover{transform:none}
+      .nav-links a:not(.cta-pill){display:none}
+      .feat-grid{grid-template-columns:1fr}
+      .stats-row{gap:1.5rem}.stat-sep{display:none}
+      .step{grid-template-columns:42px 1fr;gap:.8rem}
+      .steps::before{right:20px}
+      .cta-wrap{margin:0 .5rem;padding:2rem 1.2rem}
     }
-    .cta-card {
-      max-width: 520px;
-      margin: 0 auto;
-      padding: 3rem;
-      border-radius: 24px;
-      background: var(--card-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--card-border);
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .cta-card::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: conic-gradient(from 0deg, transparent, rgba(37, 211, 102, 0.08), transparent, rgba(37, 211, 102, 0.05), transparent);
-      animation: rotateBg 8s linear infinite;
-    }
-    @keyframes rotateBg {
-      to { transform: rotate(360deg); }
-    }
-    .cta-card > * { position: relative; z-index: 1; }
-    .cta-card h2 {
-      font-size: 1.8rem;
-      font-weight: 800;
-      margin-bottom: 0.5rem;
-      color: #fff;
-    }
-    .cta-card .subtitle {
-      color: var(--text-muted);
-      margin-bottom: 2rem;
-      font-weight: 400;
-      font-size: 0.95rem;
-    }
-    .form-group {
-      margin-bottom: 0.8rem;
-      position: relative;
-    }
-    .form-group input,
-    .form-group select {
-      width: 100%;
-      padding: 0.85rem 1rem;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      color: var(--text);
-      font-size: 0.95rem;
-      font-family: inherit;
-      transition: all 0.3s;
-      direction: rtl;
-    }
-    .form-group input::placeholder { color: var(--text-muted); }
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.15);
-    }
-    .phone-row {
-      display: flex;
-      gap: 0.5rem;
-      direction: ltr;
-    }
-    .phone-row select {
-      width: 110px;
-      padding: 0.85rem 0.5rem;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      color: var(--text);
-      font-size: 0.85rem;
-      font-family: inherit;
-      transition: all 0.3s;
-    }
-    .phone-row select option {
-      background: var(--bg-secondary);
-      color: var(--text);
-    }
-    .phone-row input { flex: 1; }
-    .submit-btn {
-      width: 100%;
-      padding: 0.95rem;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 50px;
-      font-size: 1.05rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-family: inherit;
-      position: relative;
-      margin-top: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-    .submit-btn:hover {
-      background: #1ebe5d;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 25px var(--primary-glow);
-    }
-    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-    .submit-btn .spinner {
-      display: none;
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-    }
-    .submit-btn.loading .btn-text { display: none; }
-    .submit-btn.loading .spinner { display: block; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .form-note {
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      margin-top: 1rem;
-    }
-    .form-success {
-      display: none;
-      padding: 1rem;
-      background: rgba(37, 211, 102, 0.1);
-      border: 1px solid rgba(37, 211, 102, 0.25);
-      border-radius: 14px;
-      color: var(--primary);
-      margin-top: 1rem;
-      font-weight: 500;
-    }
-
-    /* ===== FOOTER ===== */
-    footer {
-      padding: 2.5rem 0;
-      text-align: center;
-      border-top: 1px solid var(--card-border);
-      background: rgba(0, 0, 0, 0.2);
-    }
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 0.8rem;
-    }
-    .footer-logo img {
-      height: 28px;
-      border-radius: 8px;
-    }
-    .footer-logo span {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-    footer p {
-      color: var(--text-muted);
-      font-size: 0.85rem;
-    }
-
-    /* ===== ANIMATIONS ===== */
-    .animate-in {
-      opacity: 0;
-      transform: translateY(40px);
-      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .animate-in.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .animate-in.delay-1 { transition-delay: 0.1s; }
-    .animate-in.delay-2 { transition-delay: 0.2s; }
-    .animate-in.delay-3 { transition-delay: 0.3s; }
-    .animate-in.delay-4 { transition-delay: 0.4s; }
-    .animate-in.delay-5 { transition-delay: 0.5s; }
-
-    /* ===== RESPONSIVE ===== */
-    @media (max-width: 900px) {
-      .features-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 768px) {
-      .hero {
-        grid-template-columns: 1fr;
-        padding: 7rem 0 3rem;
-        text-align: center;
-        gap: 2.5rem;
-      }
-      .hero-subtitle {
-        margin-left: auto;
-        margin-right: auto;
-      }
-      .hero-cta { margin: 0 auto; }
-      .phone-mockup {
-        width: 290px;
-        transform: rotateY(0) rotateX(0);
-      }
-      .phone-mockup:hover {
-        transform: rotateY(0) rotateX(0);
-      }
-      .nav-links a:not(.nav-cta) { display: none; }
-      .features-grid { grid-template-columns: 1fr; }
-      .social-proof-inner { gap: 1.5rem; }
-      .proof-divider { display: none; }
-      .step { grid-template-columns: 44px 1fr; gap: 1rem; }
-      .steps::before { right: 21px; }
-      .cta-card { padding: 2rem 1.5rem; margin: 0 0.5rem; }
-      .wa-messages { min-height: 300px; max-height: 300px; }
-    }
-    @media (max-width: 400px) {
-      .phone-mockup { width: 270px; }
-      .hero h1 { font-size: 2rem; }
-    }
+    @media(max-width:400px){.phone{width:260px}.hero h1{font-size:2rem}}
   </style>
 </head>
 <body>
 
-<div class="bg-ambient"></div>
+<div class="atmos"><i></i><i></i><i></i></div>
 
-<!-- Nav -->
-<nav>
+<!-- NAV -->
+<header class="nav" id="nav">
   <div class="container">
-    <a href="#" class="nav-logo">
-      <img src="/logo.png" alt="מזכיר">
-      <span>מזכיר</span>
-    </a>
-    <div class="nav-links">
+    <a href="#" class="nav-brand"><img src="/logo.png" alt="מזכיר"><span>מזכיר</span></a>
+    <nav class="nav-links">
       <a href="#features">פיצ'רים</a>
-      <a href="#howItWorks">איך זה עובד</a>
-      <a href="#signup" class="nav-cta">הצטרף בחינם</a>
-    </div>
+      <a href="#how">איך זה עובד</a>
+      <a href="#signup" class="cta-pill">הצטרף בחינם</a>
+    </nav>
   </div>
-</nav>
+</header>
 
-<!-- Hero -->
-<section class="hero container">
-  <div class="hero-content animate-in">
-    <div class="hero-badge">המזכיר האישי שלך בוואטסאפ</div>
-    <h1>תפסיק לשכוח.<br><span class="highlight">תתחיל לעשות.</span></h1>
-    <p class="hero-subtitle">דבר איתו כמו עם חבר — הוא מבין, שומר ומזכיר אותך. כל ערב ב-9 סיכום של מחר, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
-    <a href="#signup" class="hero-cta" onclick="event.preventDefault();scrollToSignup();">
-      <span>התחל בחינם</span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-    </a>
-  </div>
-  <div class="phone-wrapper animate-in delay-2">
-    <div class="phone-mockup" id="heroMockup">
-      <div class="phone-notch"></div>
-      <div class="wa-header">
-        <span class="wa-back">&lsaquo;</span>
-        <div class="wa-avatar"><img src="/logo.png" alt="מזכיר"></div>
-        <div class="wa-header-info">
-          <div class="wa-name">מזכיר</div>
-          <div class="wa-status">מחובר</div>
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-txt ao">
+      <div class="badge"><i></i>המזכיר האישי שלך בוואטסאפ</div>
+      <h1>תפסיק לשכוח.<br><em>תתחיל לעשות.</em></h1>
+      <p class="hero-sub">דבר איתו כמו עם חבר — הוא מבין, שומר ומזכיר. כל ערב ב-9 סיכום של מחר, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
+      <a href="#signup" class="hero-cta" onclick="event.preventDefault();document.getElementById('signup').scrollIntoView({behavior:'smooth'})">
+        התחל בחינם
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </a>
+    </div>
+    <div class="phone-wrap ao d2">
+      <div class="phone" id="phone">
+        <div class="ph-head">
+          <div class="ph-ava"><img src="/logo.png" alt></div>
+          <div class="ph-info"><div class="ph-name">מזכיר</div><div class="ph-stat">מחובר</div></div>
         </div>
-      </div>
-      <div class="wa-messages" id="heroChat">
-        <div class="wa-typing" id="heroTyping"><span></span><span></span><span></span></div>
-      </div>
-      <div class="wa-input-bar">
-        <div class="wa-input-field">הקלד הודעה</div>
-        <div class="wa-send-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        <div class="ph-msgs" id="chat">
+          <div class="dots" id="dots"><b></b><b></b><b></b></div>
+        </div>
+        <div class="ph-bar">
+          <div class="ph-bar-in">הקלד הודעה</div>
+          <div class="ph-bar-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Social Proof -->
-<section class="social-proof">
+<!-- STATS -->
+<section class="stats">
   <div class="container">
-    <div class="social-proof-inner animate-in">
-      <div class="proof-users">
-        <div class="avatars">
-          <span></span><span></span><span></span><span></span>
-        </div>
-        <div class="proof-text">
-          כבר <strong><span class="counter" data-target="2000">0</span>+</strong> משתמשים
-        </div>
-      </div>
-      <div class="proof-divider"></div>
-      <div class="proof-stat">
-        <span class="number">24/7</span>
-        <span class="label">זמין תמיד</span>
-      </div>
-      <div class="proof-divider"></div>
-      <div class="proof-stat">
-        <span class="number">100%</span>
-        <span class="label">בעברית</span>
-      </div>
-      <div class="proof-divider"></div>
-      <div class="proof-stat">
-        <span class="number">0</span>
-        <span class="label">אפליקציות נוספות</span>
-      </div>
+    <div class="stats-row ao">
+      <div class="stat"><strong><span class="ctr" data-to="2000">0</span>+</strong><span>משתמשים</span></div>
+      <div class="stat-sep"></div>
+      <div class="stat"><strong>24/7</strong><span>זמין תמיד</span></div>
+      <div class="stat-sep"></div>
+      <div class="stat"><strong>100%</strong><span>בעברית</span></div>
+      <div class="stat-sep"></div>
+      <div class="stat"><strong>0</strong><span>אפליקציות נוספות</span></div>
     </div>
   </div>
 </section>
 
-<!-- Features -->
-<section class="features" id="features">
+<!-- FEATURES -->
+<section class="sec" id="features">
   <div class="container">
-    <div class="section-label animate-in">פיצ'רים</div>
-    <h2 class="section-title animate-in">הכל במקום אחד, בשפה שלך</h2>
-    <p class="section-subtitle animate-in">המזכיר החכם שלך מבין עברית טבעית ומנהל את כל החיים שלך ישירות מוואטסאפ</p>
-    <div class="features-grid">
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#128197;</div>
-        <h3><span class="check">&#10003;&#10003;</span> אירועים חכמים</h3>
-        <p>"מחר ב-9 יש לי פגישה" — כתוב בשפה טבעית והמזכיר שומר הכל. סיכום יומי ב-21:00 ותזכורת שעה לפני כל אירוע.</p>
-      </div>
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#128269;</div>
-        <h3><span class="check">&#10003;&#10003;</span> מה יש לי?</h3>
-        <p>"מה יש לי ביום שני?" או "מה יש לי השבוע?" — שאל את המזכיר ותקבל את כל האירועים והמשימות ליום או לתקופה שביקשת.</p>
-      </div>
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#128260;</div>
-        <h3><span class="check">&#10003;&#10003;</span> אירועים חוזרים</h3>
-        <p>"כל יום שני עד חמישי אימון ב-18:00" — המזכיר שומר את התבנית ומייצר אירועים אוטומטית כל שבוע.</p>
-      </div>
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#128276;</div>
-        <h3><span class="check">&#10003;&#10003;</span> תזכורות חכמות</h3>
-        <p>כל ערב ב-21:00 סיכום של מה שמחכה לך מחר. שעה לפני כל אירוע — תזכורת נוספת. אפס שכחה.</p>
-      </div>
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#128203;</div>
-        <h3><span class="check">&#10003;&#10003;</span> משימות ורשימות</h3>
-        <p>הוסף משימות, סדר לפי קטגוריות, וסמן כבוצע ישירות בוואטסאפ דרך סקר אינטראקטיבי.</p>
-      </div>
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#128722;</div>
-        <h3><span class="check">&#10003;&#10003;</span> רשימת קניות</h3>
-        <p>"אני צריך חלב, לחם וביצים" — שומר, מציג ומסמן פריטים שנקנו. הרשימה תמיד איתך.</p>
-      </div>
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#128172;</div>
-        <h3><span class="check">&#10003;&#10003;</span> שיחה טבעית</h3>
-        <p>דבר איתו כמו עם חבר — בלי פקודות מיוחדות. הוא מבין עברית טבעית ומגיב בהתאם.</p>
-      </div>
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#128198;</div>
-        <h3><span class="check">&#10003;&#10003;</span> סנכרון לוח שנה</h3>
-        <p>חבר את Google Calendar או Apple Calendar — כל אירוע שתוסיף דרך וואטסאפ יופיע בלוח שנה שלך, ולהיפך. סנכרון דו-כיווני אוטומטי.</p>
-      </div>
-      <div class="feature-card animate-in">
-        <div class="feature-icon">&#9989;</div>
-        <h3><span class="check">&#10003;&#10003;</span> סנכרון תזכורות</h3>
-        <p>משימות ורשימת קניות מסתנכרנים אוטומטית עם Apple Reminders או Google Tasks. סמנת כבוצע באייפון? גם אצל המזכיר זה מתעדכן.</p>
-      </div>
+    <div class="sec-tag ao">פיצ'רים</div>
+    <h2 class="sec-h ao">הכל במקום אחד, בשפה שלך</h2>
+    <p class="sec-sub ao">המזכיר החכם שלך מבין עברית טבעית ומנהל את הכל ישירות מוואטסאפ</p>
+    <div class="feat-grid">
+      <div class="feat ao"><div class="feat-ico">&#128197;</div><h3><span class="ck">&#10003;&#10003;</span> אירועים חכמים</h3><p>"מחר ב-9 יש לי פגישה" — כתוב בשפה טבעית והמזכיר שומר הכל. סיכום יומי ב-21:00 ותזכורת שעה לפני כל אירוע.</p></div>
+      <div class="feat ao d1"><div class="feat-ico">&#128269;</div><h3><span class="ck">&#10003;&#10003;</span> מה יש לי?</h3><p>"מה יש לי ביום שני?" או "מה יש לי השבוע?" — שאל ותקבל את כל מה שמתוכנן.</p></div>
+      <div class="feat ao d2"><div class="feat-ico">&#128260;</div><h3><span class="ck">&#10003;&#10003;</span> אירועים חוזרים</h3><p>"כל יום שני עד חמישי אימון ב-18:00" — שומר את התבנית ומייצר אירועים אוטומטית.</p></div>
+      <div class="feat ao"><div class="feat-ico">&#128276;</div><h3><span class="ck">&#10003;&#10003;</span> תזכורות חכמות</h3><p>כל ערב ב-21:00 סיכום של מחר. שעה לפני כל אירוע — תזכורת. אפס שכחה.</p></div>
+      <div class="feat ao d1"><div class="feat-ico">&#128203;</div><h3><span class="ck">&#10003;&#10003;</span> משימות ורשימות</h3><p>הוסף משימות, סדר לפי קטגוריות, וסמן כבוצע ישירות דרך סקר בוואטסאפ.</p></div>
+      <div class="feat ao d2"><div class="feat-ico">&#128722;</div><h3><span class="ck">&#10003;&#10003;</span> רשימת קניות</h3><p>"חלב, לחם וביצים" — שומר, מציג ומסמן פריטים שנקנו. הרשימה תמיד איתך.</p></div>
+      <div class="feat ao"><div class="feat-ico">&#128172;</div><h3><span class="ck">&#10003;&#10003;</span> שיחה טבעית</h3><p>דבר איתו כמו עם חבר — בלי פקודות. הוא מבין עברית טבעית ומגיב בהתאם.</p></div>
+      <div class="feat ao d1"><div class="feat-ico">&#128198;</div><h3><span class="ck">&#10003;&#10003;</span> סנכרון לוח שנה</h3><p>חבר Google Calendar או Apple Calendar — סנכרון דו-כיווני אוטומטי.</p></div>
+      <div class="feat ao d2"><div class="feat-ico">&#9989;</div><h3><span class="ck">&#10003;&#10003;</span> סנכרון תזכורות</h3><p>משימות וקניות מסתנכרנים עם Apple Reminders ו-Google Tasks.</p></div>
     </div>
   </div>
 </section>
 
-<!-- How It Works -->
-<section class="how-it-works" id="howItWorks">
+<!-- HOW IT WORKS -->
+<section class="sec how" id="how">
   <div class="container">
-    <div class="section-label animate-in">איך זה עובד</div>
-    <h2 class="section-title animate-in">שלושה צעדים פשוטים</h2>
-    <p class="section-subtitle animate-in">בלי התקנות, בלי הגדרות מסובכות. פשוט שולחים הודעה.</p>
+    <div class="sec-tag ao">איך זה עובד</div>
+    <h2 class="sec-h ao">שלושה צעדים פשוטים</h2>
+    <p class="sec-sub ao">בלי התקנות, בלי הגדרות. פשוט שולחים הודעה.</p>
     <div class="steps">
-      <div class="step animate-in">
-        <div class="step-number">1</div>
-        <div class="step-content">
+      <div class="step ao">
+        <div class="step-n">1</div>
+        <div class="step-body">
           <h3>שלח הודעה רגילה</h3>
-          <p>כתוב בדיוק כמו שאתה מדבר — בעברית, בלי פורמט מיוחד</p>
-          <div class="step-chat">
-            <div class="wa-msg sent">יש לי פגישה ביום חמישי ב-14:00 עם עו"ד<div class="time"><span class="checks">&#10003;&#10003;</span> 09:41</div></div>
-          </div>
+          <p>כתוב כמו שאתה מדבר — בעברית, בלי פורמט</p>
+          <div class="step-demo"><div class="bub s">יש לי פגישה ביום חמישי ב-14:00 עם עו"ד<div class="t"><span class="ck">&#10003;&#10003;</span> 09:41</div></div></div>
         </div>
       </div>
-      <div class="step animate-in">
-        <div class="step-number">2</div>
-        <div class="step-content">
+      <div class="step ao d1">
+        <div class="step-n">2</div>
+        <div class="step-body">
           <h3>המזכיר מבין ושומר</h3>
           <p>AI חכם מזהה את הכוונה שלך ושומר בצורה מסודרת</p>
-          <div class="step-chat">
-            <div class="wa-msg received">נתפס! &#9989; פגישה עם עו"ד ביום חמישי ב-14:00<div class="time">09:41</div></div>
-          </div>
+          <div class="step-demo"><div class="bub r">נתפס! &#9989; פגישה עם עו"ד ביום חמישי ב-14:00<div class="t">09:41</div></div></div>
         </div>
       </div>
-      <div class="step animate-in">
-        <div class="step-number">3</div>
-        <div class="step-content">
+      <div class="step ao d2">
+        <div class="step-n">3</div>
+        <div class="step-body">
           <h3>מקבל תזכורות בזמן</h3>
-          <p>כל ערב ב-9 סיכום של מחר, ושעה לפני כל אירוע — אף פעם לא תשכח</p>
-          <div class="step-chat">
-            <div class="wa-msg received">&#127769; ערב טוב! הנה מה שמחכה לך מחר:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>לילה טוב! &#128564;<div class="time">21:00</div></div>
-          </div>
+          <p>כל ערב ב-9 סיכום של מחר, ושעה לפני — אף פעם לא תשכח</p>
+          <div class="step-demo"><div class="bub r">&#127769; ערב טוב! הנה מה שמחכה לך מחר:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>לילה טוב! &#128564;<div class="t">21:00</div></div></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- CTA / Signup -->
-<section class="cta-section" id="signup">
+<!-- SIGNUP -->
+<section class="sec" id="signup">
   <div class="container">
-    <div class="cta-card animate-in">
+    <div class="cta-wrap ao">
       <h2>הצטרף לרשימת ההמתנה</h2>
-      <p class="subtitle">השאר פרטים ונעדכן אותך במייל כשהחשבון שלך מוכן</p>
-      <form id="signupForm" onsubmit="handleSignup(event)">
-        <div class="form-group">
-          <input type="text" id="nameInput" placeholder="השם שלך" required autocomplete="name">
-        </div>
-        <div class="form-group">
-          <input type="email" id="emailInput" placeholder="כתובת מייל" required autocomplete="email" dir="ltr" style="text-align:right;">
-        </div>
-        <div class="form-group phone-row">
+      <p class="sub">השאר פרטים ונעדכן אותך במייל כשהחשבון מוכן</p>
+      <form id="form" onsubmit="handleSignup(event)">
+        <div class="fg"><input type="text" id="nameInput" placeholder="השם שלך" required autocomplete="name"></div>
+        <div class="fg"><input type="email" id="emailInput" placeholder="כתובת מייל" required autocomplete="email" dir="ltr" style="text-align:right"></div>
+        <div class="fg ph-row">
           <select id="countryCode">
-            <option value="972">IL +972</option>
-            <option value="1">US +1</option>
-            <option value="44">UK +44</option>
-            <option value="357">CY +357</option>
-            <option value="49">DE +49</option>
-            <option value="33">FR +33</option>
-            <option value="380">UA +380</option>
-            <option value="7">RU +7</option>
-            <option value="971">AE +971</option>
-            <option value="61">AU +61</option>
-            <option value="91">IN +91</option>
-            <option value="55">BR +55</option>
-            <option value="27">ZA +27</option>
-            <option value="52">MX +52</option>
-            <option value="34">ES +34</option>
-            <option value="39">IT +39</option>
-            <option value="31">NL +31</option>
-            <option value="46">SE +46</option>
-            <option value="41">CH +41</option>
-            <option value="32">BE +32</option>
+            <option value="972">IL +972</option><option value="1">US +1</option><option value="44">UK +44</option>
+            <option value="357">CY +357</option><option value="49">DE +49</option><option value="33">FR +33</option>
+            <option value="380">UA +380</option><option value="7">RU +7</option><option value="971">AE +971</option>
+            <option value="61">AU +61</option><option value="91">IN +91</option><option value="55">BR +55</option>
+            <option value="27">ZA +27</option><option value="52">MX +52</option><option value="34">ES +34</option>
+            <option value="39">IT +39</option><option value="31">NL +31</option><option value="46">SE +46</option>
+            <option value="41">CH +41</option><option value="32">BE +32</option>
           </select>
-          <input type="tel" id="phoneInput" placeholder="מספר טלפון" required autocomplete="tel" dir="ltr" style="text-align:left;">
+          <input type="tel" id="phoneInput" placeholder="מספר טלפון" required autocomplete="tel" dir="ltr" style="text-align:left">
         </div>
-        <button type="submit" class="submit-btn" id="submitBtn">
-          <span class="btn-text">הצטרף לרשימה</span>
-          <div class="spinner"></div>
+        <button type="submit" class="sub-btn" id="submitBtn">
+          <span class="bt">הצטרף לרשימה</span>
+          <div class="sp"></div>
         </button>
       </form>
-      <div class="form-success" id="formSuccess"></div>
-      <p class="form-note">&#128274; פרטיך מאובטחים. לא תקבל ספאם.</p>
+      <div class="f-ok" id="fOk"></div>
+      <p class="f-note">&#128274; פרטיך מאובטחים. לא תקבל ספאם.</p>
     </div>
   </div>
 </section>
 
-<!-- Footer -->
+<!-- FOOTER -->
 <footer>
   <div class="container">
-    <div class="footer-logo">
-      <img src="/logo.png" alt="מזכיר">
-      <span>מזכיר</span>
-    </div>
+    <div class="foot-brand"><img src="/logo.png" alt><span>מזכיר</span></div>
     <p>נבנה על ידי יצחק לפידות</p>
   </div>
 </footer>
 
 <script>
-  // ===== Intersection Observer for fade-in animations =====
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-      }
-    });
-  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+// Scroll animations
+const io=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('v')}),{threshold:.08,rootMargin:'0px 0px -30px'});
+document.querySelectorAll('.ao').forEach(e=>io.observe(e));
 
-  document.querySelectorAll('.animate-in').forEach((el) => observer.observe(el));
+// Nav scroll
+window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',scrollY>40));
 
-  // ===== Counter animation =====
-  const counterObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        const el = entry.target;
-        const target = parseInt(el.dataset.target);
-        let current = 0;
-        const increment = target / 50;
-        const timer = setInterval(() => {
-          current += increment;
-          if (current >= target) {
-            el.textContent = target.toLocaleString();
-            clearInterval(timer);
-          } else {
-            el.textContent = Math.floor(current).toLocaleString();
-          }
-        }, 25);
-        counterObserver.unobserve(el);
-      }
-    });
-  }, { threshold: 0.5 });
+// Counter
+const cio=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){const t=+x.target.dataset.to;let c=0;const s=t/45;const iv=setInterval(()=>{c+=s;if(c>=t){x.target.textContent=t.toLocaleString();clearInterval(iv)}else x.target.textContent=Math.floor(c).toLocaleString()},22);cio.unobserve(x.target)}}),{threshold:.5});
+document.querySelectorAll('.ctr').forEach(e=>cio.observe(e));
 
-  document.querySelectorAll('.counter').forEach((el) => counterObserver.observe(el));
-
-  // ===== WhatsApp chat animation =====
-  const chatMessages = [
-    { type: 'sent', text: 'מחר ב-10 יש לי פגישה עם רואה חשבון', delay: 600 },
-    { type: 'typing', delay: 1200 },
-    { type: 'received', text: 'נתפס! &#9989; פגישה עם רואה חשבון מחר ב-10 בבוקר', delay: 1800 },
-    { type: 'sent', text: 'תוסיף לרשימת קניות חלב, לחם וביצים', delay: 3000 },
-    { type: 'typing', delay: 1200 },
-    { type: 'received', text: '&#128722; הוספתי 3 פריטים לרשימת הקניות!', delay: 1800 },
-    { type: 'sent', text: 'מה יש לי היום?', delay: 3000 },
-    { type: 'typing', delay: 1000 },
-    { type: 'received', text: '&#128197; אירועים להיום:\n\n• 14:00 - שיעור יוגה\n• 18:30 - ארוחת ערב עם המשפחה\n\nיום מעולה! &#128170;', delay: 2000 },
-  ];
-
-  function runChatAnimation() {
-    const container = document.getElementById('heroChat');
-    const typing = document.getElementById('heroTyping');
-
-    container.querySelectorAll('.wa-msg').forEach((m) => m.remove());
-    typing.classList.remove('visible');
-
-    let totalDelay = 0;
-    const now = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-
-    chatMessages.forEach((msg) => {
-      totalDelay += msg.delay;
-
-      if (msg.type === 'typing') {
-        setTimeout(() => { typing.classList.add('visible'); }, totalDelay);
-      } else {
-        setTimeout(() => {
-          typing.classList.remove('visible');
-          const div = document.createElement('div');
-          div.className = 'wa-msg ' + msg.type;
-          const timeHtml = msg.type === 'sent'
-            ? '<div class="time"><span class="checks">&#10003;&#10003;</span> ' + now + '</div>'
-            : '<div class="time">' + now + '</div>';
-          div.innerHTML = msg.text.replace(/\n/g, '<br>') + timeHtml;
-          container.insertBefore(div, typing);
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => div.classList.add('visible'));
-          });
-          container.scrollTop = container.scrollHeight;
-        }, totalDelay);
-      }
-    });
-
-    totalDelay += 5000;
-    setTimeout(runChatAnimation, totalDelay);
-  }
-
-  const heroObserver = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting) {
-      setTimeout(runChatAnimation, 800);
-      heroObserver.disconnect();
-    }
+// Chat animation
+const msgs=[
+  {t:'s',x:'מחר ב-10 יש לי פגישה עם רואה חשבון',d:500},
+  {t:'d',d:1100},
+  {t:'r',x:'נתפס! &#9989; פגישה עם רואה חשבון מחר ב-10 בבוקר',d:1600},
+  {t:'s',x:'תוסיף לרשימת קניות חלב, לחם וביצים',d:2800},
+  {t:'d',d:1000},
+  {t:'r',x:'&#128722; הוספתי 3 פריטים לרשימת הקניות!',d:1500},
+  {t:'s',x:'מה יש לי היום?',d:2500},
+  {t:'d',d:900},
+  {t:'r',x:'&#128197; אירועים להיום:\n\n• 14:00 - שיעור יוגה\n• 18:30 - ארוחת ערב עם המשפחה\n\nיום מעולה! &#128170;',d:1800}
+];
+function runChat(){
+  const c=document.getElementById('chat'),d=document.getElementById('dots');
+  c.querySelectorAll('.bub').forEach(m=>m.remove());d.classList.remove('on');
+  const now=new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
+  let dl=0;
+  msgs.forEach(m=>{
+    dl+=m.d;
+    if(m.t==='d'){setTimeout(()=>d.classList.add('on'),dl)}
+    else{setTimeout(()=>{
+      d.classList.remove('on');
+      const b=document.createElement('div');
+      b.className='bub '+m.t;
+      const ck=m.t==='s'?'<div class="t"><span class="ck">&#10003;&#10003;</span> '+now+'</div>':'<div class="t">'+now+'</div>';
+      b.innerHTML=m.x.replace(/\n/g,'<br>')+ck;
+      c.insertBefore(b,d);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.add('show')));
+      c.scrollTop=c.scrollHeight;
+    },dl)}
   });
-  heroObserver.observe(document.getElementById('heroMockup'));
+  setTimeout(runChat,dl+4500);
+}
+const po=new IntersectionObserver(e=>{if(e[0].isIntersecting){setTimeout(runChat,700);po.disconnect()}});
+po.observe(document.getElementById('phone'));
 
-  // ===== Navigation =====
-  function scrollToSignup() {
-    document.getElementById('signup').scrollIntoView({ behavior: 'smooth' });
-  }
-  function scrollToHowItWorks() {
-    document.getElementById('howItWorks').scrollIntoView({ behavior: 'smooth' });
-  }
-
-  // Sticky nav background on scroll
-  window.addEventListener('scroll', () => {
-    const nav = document.querySelector('nav');
-    if (window.scrollY > 50) {
-      nav.style.background = 'rgba(11, 20, 26, 0.95)';
-    } else {
-      nav.style.background = 'rgba(11, 20, 26, 0.75)';
-    }
-  });
-
-  // ===== Form submission =====
-  async function handleSignup(e) {
-    e.preventDefault();
-    const btn = document.getElementById('submitBtn');
-    const success = document.getElementById('formSuccess');
-    const name = document.getElementById('nameInput').value.trim();
-    const email = document.getElementById('emailInput').value.trim();
-    const countryCode = document.getElementById('countryCode').value;
-    let phone = document.getElementById('phoneInput').value.trim().replace(/[\s\-()+]/g, '');
-    if (phone.startsWith('0')) phone = phone.substring(1);
-    if (phone.startsWith(countryCode)) phone = phone.substring(countryCode.length);
-    phone = countryCode + phone;
-
-    if (!name || !email || !phone) return;
-
-    btn.classList.add('loading');
-    btn.disabled = true;
-
-    try {
-      const res = await fetch('/api/admin/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone }),
-      });
-      const data = await res.json();
-      success.textContent = data.message || 'נרשמת בהצלחה!';
-      success.style.display = 'block';
-      success.style.borderColor = 'rgba(37, 211, 102, 0.25)';
-      success.style.color = '#25D366';
-      document.getElementById('signupForm').reset();
-    } catch {
-      success.textContent = 'שגיאה בהרשמה, נסה שוב';
-      success.style.display = 'block';
-      success.style.borderColor = 'rgba(220, 38, 38, 0.3)';
-      success.style.color = '#F87171';
-    } finally {
-      btn.classList.remove('loading');
-      btn.disabled = false;
-    }
-  }
+// Form
+async function handleSignup(e){
+  e.preventDefault();
+  const btn=document.getElementById('submitBtn'),ok=document.getElementById('fOk');
+  const name=document.getElementById('nameInput').value.trim();
+  const email=document.getElementById('emailInput').value.trim();
+  const cc=document.getElementById('countryCode').value;
+  let ph=document.getElementById('phoneInput').value.trim().replace(/[\s\-()+]/g,'');
+  if(ph.startsWith('0'))ph=ph.substring(1);
+  if(ph.startsWith(cc))ph=ph.substring(cc.length);
+  ph=cc+ph;
+  if(!name||!email||!ph)return;
+  btn.classList.add('ld');btn.disabled=true;
+  try{
+    const r=await fetch('/api/admin/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,phone:ph})});
+    const d=await r.json();
+    ok.textContent=d.message||'נרשמת בהצלחה!';ok.style.display='block';
+    ok.style.borderColor='rgba(37,211,102,.2)';ok.style.color='#25d366';
+    document.getElementById('form').reset();
+  }catch{
+    ok.textContent='שגיאה בהרשמה, נסה שוב';ok.style.display='block';
+    ok.style.borderColor='rgba(220,38,38,.3)';ok.style.color='#f87171';
+  }finally{btn.classList.remove('ld');btn.disabled=false}
+}
 </script>
 </body>
 </html>
