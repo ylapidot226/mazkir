@@ -31,9 +31,13 @@ async function validateToken(token) {
 }
 
 const EXPIRED_HTML = `
-  <html dir="rtl"><body style="font-family:sans-serif;text-align:center;padding:50px;">
-    <h2>הקישור לא תקין או שפג תוקפו</h2>
-    <p>שלח שוב "חבר לוח שנה" בוואטסאפ כדי לקבל קישור חדש</p>
+  <html dir="rtl"><head><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700&display=swap" rel="stylesheet"></head>
+  <body style="font-family:'Heebo',sans-serif;text-align:center;padding:50px;background:#ECE5DD;color:#111b21;">
+    <div style="max-width:400px;margin:0 auto;background:rgba(255,255,255,0.85);border-radius:16px;padding:40px;border:1px solid rgba(0,0,0,0.08);">
+      <img src="/logo.png" alt="מזכיר" style="width:48px;height:48px;border-radius:12px;margin-bottom:16px;">
+      <h2 style="margin:0 0 12px;">הקישור לא תקין או שפג תוקפו</h2>
+      <p style="color:#667781;">שלח שוב "חבר לוח שנה" בוואטסאפ כדי לקבל קישור חדש</p>
+    </div>
   </body></html>
 `;
 
@@ -69,9 +73,13 @@ router.get('/google/callback', async (req, res) => {
   if (oauthError) {
     logger.warn('calendar', 'OAuth denied', { error: oauthError });
     return res.send(`
-      <html dir="rtl"><body style="font-family:sans-serif;text-align:center;padding:50px;">
-        <h2>החיבור בוטל</h2>
-        <p>אפשר לנסות שוב על ידי שליחת "חבר לוח שנה" בוואטסאפ</p>
+      <html dir="rtl"><head><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700&display=swap" rel="stylesheet"></head>
+      <body style="font-family:'Heebo',sans-serif;text-align:center;padding:50px;background:#ECE5DD;color:#111b21;">
+        <div style="max-width:400px;margin:0 auto;background:rgba(255,255,255,0.85);border-radius:16px;padding:40px;border:1px solid rgba(0,0,0,0.08);">
+          <img src="/logo.png" alt="מזכיר" style="width:48px;height:48px;border-radius:12px;margin-bottom:16px;">
+          <h2 style="margin:0 0 12px;">החיבור בוטל</h2>
+          <p style="color:#667781;">אפשר לנסות שוב על ידי שליחת "חבר לוח שנה" בוואטסאפ</p>
+        </div>
       </body></html>
     `);
   }
@@ -92,23 +100,29 @@ router.get('/google/callback', async (req, res) => {
     logger.info('calendar', 'Google Calendar connected', { userId });
 
     res.send(`
-      <html dir="rtl"><body style="font-family:sans-serif;text-align:center;padding:50px;background:#080808;color:#F1F1F1;">
-        <div style="max-width:400px;margin:0 auto;">
-          <div style="font-size:64px;margin-bottom:20px;">🎉</div>
-          <h2 style="color:#A78BFA;">Google Calendar מחובר!</h2>
-          <p style="color:#8B8B8B;margin-top:15px;">
+      <html dir="rtl"><head><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700&display=swap" rel="stylesheet"></head>
+      <body style="font-family:'Heebo',sans-serif;text-align:center;padding:50px;background:#ECE5DD;color:#111b21;">
+        <div style="max-width:400px;margin:0 auto;background:rgba(255,255,255,0.85);border-radius:16px;padding:40px;border:1px solid rgba(0,0,0,0.08);">
+          <img src="/logo.png" alt="מזכיר" style="width:48px;height:48px;border-radius:12px;margin-bottom:16px;">
+          <div style="font-size:48px;margin-bottom:16px;">🎉</div>
+          <h2 style="color:#25D366;margin:0 0 12px;">Google Calendar מחובר!</h2>
+          <p style="color:#667781;margin-top:15px;">
             מעכשיו כל האירועים שתוסיף דרך וואטסאפ יופיעו גם ב-Google Calendar, וכל מה שתוסיף ב-Google Calendar יופיע גם אצל מזכיר.
           </p>
-          <p style="color:#8B8B8B;margin-top:15px;">אפשר לסגור את הדף ולחזור לוואטסאפ 💬</p>
+          <p style="color:#667781;margin-top:15px;">אפשר לסגור את הדף ולחזור לוואטסאפ 💬</p>
         </div>
       </body></html>
     `);
   } catch (error) {
     logger.error('calendar', 'Google OAuth callback failed', { error: error.message });
     res.status(500).send(`
-      <html dir="rtl"><body style="font-family:sans-serif;text-align:center;padding:50px;">
-        <h2>שגיאה בחיבור</h2>
-        <p>נסה שוב מאוחר יותר</p>
+      <html dir="rtl"><head><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700&display=swap" rel="stylesheet"></head>
+      <body style="font-family:'Heebo',sans-serif;text-align:center;padding:50px;background:#ECE5DD;color:#111b21;">
+        <div style="max-width:400px;margin:0 auto;background:rgba(255,255,255,0.85);border-radius:16px;padding:40px;border:1px solid rgba(0,0,0,0.08);">
+          <img src="/logo.png" alt="מזכיר" style="width:48px;height:48px;border-radius:12px;margin-bottom:16px;">
+          <h2 style="margin:0 0 12px;">שגיאה בחיבור</h2>
+          <p style="color:#667781;">נסה שוב מאוחר יותר</p>
+        </div>
       </body></html>
     `);
   }

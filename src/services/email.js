@@ -18,32 +18,37 @@ async function sendWelcomeEmail(email, name) {
       html: `
 <!DOCTYPE html>
 <html dir="rtl" lang="he">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:#333333;">
+<head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700&display=swap" rel="stylesheet"></head>
+<body style="margin:0;padding:0;background:#ECE5DD;font-family:'Heebo',Arial,Helvetica,sans-serif;color:#111b21;">
   <div style="max-width:500px;margin:0 auto;padding:40px 20px;">
 
-    <h1 style="font-size:22px;margin:0 0 12px;color:#1a1a1a;">שלום ${name},</h1>
-    <p style="font-size:15px;margin:0 0 24px;line-height:1.7;color:#555555;">
-      תודה שנרשמת למזכיר. העוזר האישי שלך בוואטסאפ מוכן לפעולה.
-    </p>
-
-    <p style="font-size:15px;margin:0 0 8px;color:#555555;font-weight:bold;">הצעד הבא:</p>
-    <p style="font-size:15px;margin:0 0 24px;line-height:1.7;color:#555555;">
-      לחץ על הכפתור למטה כדי לפתוח צ'אט עם המזכיר בוואטסאפ ולשלוח הודעה ראשונה.
-    </p>
-
-    <div style="text-align:center;margin:32px 0;">
-      <a href="${waLink}" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
-        פתח צ'אט עם המזכיר
-      </a>
+    <div style="text-align:center;margin-bottom:24px;">
+      <img src="https://www.maztary.com/logo.png" alt="מזכיר" style="width:64px;height:64px;border-radius:16px;">
     </div>
 
-    <p style="font-size:13px;margin:24px 0 0;line-height:1.6;color:#999999;">
-      אחרי שתשלח הודעה ראשונה, נאשר את החשבון שלך ותוכל להתחיל להשתמש.
-    </p>
+    <div style="background:rgba(255,255,255,0.9);border-radius:16px;padding:28px;border:1px solid rgba(0,0,0,0.08);">
+      <h1 style="font-size:22px;margin:0 0 12px;color:#111b21;">שלום ${name},</h1>
+      <p style="font-size:15px;margin:0 0 24px;line-height:1.7;color:#3b4a54;">
+        תודה שנרשמת למזכיר. העוזר האישי שלך בוואטסאפ מוכן לפעולה.
+      </p>
 
-    <hr style="border:none;border-top:1px solid #eeeeee;margin:32px 0 16px;">
-    <p style="font-size:12px;color:#999999;text-align:center;margin:0;">
+      <p style="font-size:15px;margin:0 0 8px;color:#3b4a54;font-weight:bold;">הצעד הבא:</p>
+      <p style="font-size:15px;margin:0 0 24px;line-height:1.7;color:#3b4a54;">
+        לחץ על הכפתור למטה כדי לפתוח צ'אט עם המזכיר בוואטסאפ ולשלוח הודעה ראשונה.
+      </p>
+
+      <div style="text-align:center;margin:28px 0;">
+        <a href="${waLink}" style="display:inline-block;background:#25D366;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:100px;font-size:16px;font-weight:bold;box-shadow:0 4px 15px rgba(37,211,102,0.3);">
+          פתח צ'אט עם המזכיר
+        </a>
+      </div>
+
+      <p style="font-size:13px;margin:20px 0 0;line-height:1.6;color:#667781;">
+        אחרי שתשלח הודעה ראשונה תוכל להתחיל להשתמש מיד.
+      </p>
+    </div>
+
+    <p style="font-size:12px;color:#667781;text-align:center;margin:20px 0 0;">
       מזכיר - maztary.com
     </p>
   </div>
