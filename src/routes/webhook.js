@@ -460,19 +460,33 @@ async function executeAction(userId, chatId, aiResponse) {
           msg = 'רשימת הקניות ריקה! 🛒';
           await greenApi.sendMessage(chatId, msg);
         } else if (list.length === 1) {
-          // Polls need at least 2 options, show as text for single item
           msg = `🛒 רשימת הקניות:\n\n• ${list[0].item}\n\nכדי לסמן כנקנה כתוב: "קניתי ${list[0].item}"`;
           await greenApi.sendMessage(chatId, msg);
         } else {
-          const options = list.slice(0, 12).map((s) => s.item);
-          const question = '🛒 רשימת הקניות (סמן מה קנית):';
-          const pollResult = await greenApi.sendPoll(chatId, question, options);
-          if (pollResult?.idMessage) {
-            await db.savePollMapping(userId, pollResult.idMessage,
-              list.slice(0, 12).map((s) => ({ id: s.id, content: s.item, type: 'shopping' }))
-            );
+          // Deduplicate items for poll (polls don't allow duplicate option names)
+          const seen = new Set();
+          const uniqueList = [];
+          for (const s of list.slice(0, 12)) {
+            if (!seen.has(s.item)) {
+              seen.add(s.item);
+              uniqueList.push(s);
+            }
           }
-          msg = question;
+
+          if (uniqueList.length < 2) {
+            msg = `🛒 רשימת הקניות:\n\n• ${uniqueList[0].item}\n\nכדי לסמן כנקנה כתוב: "קניתי ${uniqueList[0].item}"`;
+            await greenApi.sendMessage(chatId, msg);
+          } else {
+            const options = uniqueList.map((s) => s.item);
+            const question = '🛒 רשימת הקניות (סמן מה קנית):';
+            const pollResult = await greenApi.sendPoll(chatId, question, options);
+            if (pollResult?.idMessage) {
+              await db.savePollMapping(userId, pollResult.idMessage,
+                uniqueList.map((s) => ({ id: s.id, content: s.item, type: 'shopping' }))
+              );
+            }
+            msg = question;
+          }
         }
         return msg;
       }
