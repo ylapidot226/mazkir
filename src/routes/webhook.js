@@ -13,9 +13,9 @@ const logger = require('../utils/logger');
 const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
-function formatDateHe(isoString) {
+function formatDateHe(isoString, timezone = 'Asia/Jerusalem') {
   const d = new Date(isoString);
-  const il = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const il = new Date(d.toLocaleString('en-US', { timeZone: timezone }));
   const day = DAYS_HE[il.getDay()];
   const date = il.getDate();
   const month = MONTHS_HE[il.getMonth()];
@@ -180,14 +180,14 @@ async function processWebhook(body) {
     }
 
     // Process with AI
-    const aiResponse = await claude.processMessage(text, history);
+    const aiResponse = await claude.processMessage(text, history, null, user.timezone || 'Asia/Jerusalem');
     logger.info('webhook', 'AI response', { action: aiResponse.action, content: aiResponse.content, days: aiResponse.days, time: aiResponse.time, category: aiResponse.category });
 
     // Save user message
     await db.saveMessage(user.id, 'user', text);
 
     // Execute the action and get the response that was actually sent
-    const sentResponse = await executeAction(user.id, chatId, aiResponse);
+    const sentResponse = await executeAction(user.id, chatId, aiResponse, user.timezone || 'Asia/Jerusalem');
 
     // Save condensed history for query actions to prevent AI context pollution
     const historyMsg = getCondensedHistory(aiResponse.action, sentResponse);
@@ -271,7 +271,7 @@ async function handlePollVote(userId, chatId, pollStanzaId, votes) {
 /**
  * Execute the action returned by AI
  */
-async function executeAction(userId, chatId, aiResponse) {
+async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusalem') {
   const { action, category, content, datetime, location, items, response } = aiResponse;
 
   try {
@@ -331,7 +331,7 @@ async function executeAction(userId, chatId, aiResponse) {
 
         if (events.length > 0) {
           const formatted = events.map((e) => {
-            const f = formatDateHe(e.datetime);
+            const f = formatDateHe(e.datetime, timezone);
             const loc = e.location && e.location !== 'Asia/Jerusalem' ? ` 📍 ${e.location}` : '';
             return `• ${e.title} - ${f.full}${loc}`;
           }).join('\n');
@@ -633,7 +633,7 @@ async function executeAction(userId, chatId, aiResponse) {
     if (aiResponse.additional_actions && Array.isArray(aiResponse.additional_actions)) {
       for (const extra of aiResponse.additional_actions) {
         try {
-          await executeAction(userId, chatId, { ...extra, response: null });
+          await executeAction(userId, chatId, { ...extra, response: null }, timezone);
         } catch (err) {
           logger.warn('webhook', 'Failed to execute additional action', { action: extra.action, error: err.message });
         }

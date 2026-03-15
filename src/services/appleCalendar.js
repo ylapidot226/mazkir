@@ -93,7 +93,7 @@ async function listEvents(credentials, calendarUrl) {
 /**
  * Create an event in Apple Calendar
  */
-async function createEvent(credentials, calendarUrl, event) {
+async function createEvent(credentials, calendarUrl, event, timezone = 'Asia/Jerusalem') {
   try {
     const client = await getClient(credentials);
     const calendars = await client.fetchCalendars();
@@ -111,8 +111,8 @@ async function createEvent(credentials, calendarUrl, event) {
       'PRODID:-//Mazkir//WhatsApp Bot//HE',
       'BEGIN:VEVENT',
       `UID:${uid}`,
-      `DTSTART;TZID=Asia/Jerusalem:${formatLocalDate(startDate)}`,
-      `DTEND;TZID=Asia/Jerusalem:${formatLocalDate(endDate)}`,
+      `DTSTART;TZID=${timezone}:${formatLocalDate(startDate, timezone)}`,
+      `DTEND;TZID=${timezone}:${formatLocalDate(endDate, timezone)}`,
       `SUMMARY:${event.title}`,
       event.location ? `LOCATION:${event.location}` : '',
       `DTSTAMP:${formatICSDate(new Date())}`,
@@ -212,8 +212,8 @@ function formatICSDate(date) {
 /**
  * Format a Date as local Israel time for ICS (no Z suffix, used with TZID)
  */
-function formatLocalDate(date) {
-  const il = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+function formatLocalDate(date, timezone = 'Asia/Jerusalem') {
+  const il = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
   const y = il.getFullYear();
   const m = String(il.getMonth() + 1).padStart(2, '0');
   const d = String(il.getDate()).padStart(2, '0');

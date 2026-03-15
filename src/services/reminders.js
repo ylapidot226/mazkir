@@ -6,17 +6,17 @@ const logger = require('../utils/logger');
 const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
-function formatTime(isoString) {
+function formatTime(isoString, timezone = 'Asia/Jerusalem') {
   const d = new Date(isoString);
-  const il = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const il = new Date(d.toLocaleString('en-US', { timeZone: timezone }));
   const hours = String(il.getHours()).padStart(2, '0');
   const minutes = String(il.getMinutes()).padStart(2, '0');
   return `${hours}:${minutes}`;
 }
 
-function formatDateFull(isoString) {
+function formatDateFull(isoString, timezone = 'Asia/Jerusalem') {
   const d = new Date(isoString);
-  const il = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const il = new Date(d.toLocaleString('en-US', { timeZone: timezone }));
   const day = DAYS_HE[il.getDay()];
   const date = il.getDate();
   const month = MONTHS_HE[il.getMonth()];

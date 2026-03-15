@@ -101,7 +101,7 @@ async function listEvents(tokens, syncToken = null, calendarId = 'primary') {
 /**
  * Create an event in Google Calendar
  */
-async function createEvent(tokens, event, calendarId = 'primary') {
+async function createEvent(tokens, event, calendarId = 'primary', timezone = 'Asia/Jerusalem') {
   const { calendar } = getCalendarClient(tokens);
 
   const eventBody = {
@@ -109,11 +109,11 @@ async function createEvent(tokens, event, calendarId = 'primary') {
     location: event.location || undefined,
     start: {
       dateTime: event.datetime,
-      timeZone: 'Asia/Jerusalem',
+      timeZone: timezone,
     },
     end: {
       dateTime: new Date(new Date(event.datetime).getTime() + 60 * 60 * 1000).toISOString(),
-      timeZone: 'Asia/Jerusalem',
+      timeZone: timezone,
     },
   };
 
@@ -143,7 +143,7 @@ async function deleteEvent(tokens, eventId, calendarId = 'primary') {
 /**
  * Update an event in Google Calendar
  */
-async function updateEvent(tokens, eventId, event, calendarId = 'primary') {
+async function updateEvent(tokens, eventId, event, calendarId = 'primary', timezone = 'Asia/Jerusalem') {
   const { calendar } = getCalendarClient(tokens);
 
   const eventBody = {
@@ -151,11 +151,11 @@ async function updateEvent(tokens, eventId, event, calendarId = 'primary') {
     location: event.location || undefined,
     start: {
       dateTime: event.datetime,
-      timeZone: 'Asia/Jerusalem',
+      timeZone: timezone,
     },
     end: {
       dateTime: new Date(new Date(event.datetime).getTime() + 60 * 60 * 1000).toISOString(),
-      timeZone: 'Asia/Jerusalem',
+      timeZone: timezone,
     },
   };
 

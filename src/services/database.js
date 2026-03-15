@@ -148,7 +148,7 @@ async function addEvent(userId, title, datetime, location) {
 
 async function getUpcomingEvents(userId, daysAhead = null, startDaysAhead = 0) {
   // Include events from start of today (Israel time), not just from "now"
-  const startDate = new Date(getStartOfTodayIsrael().getTime() + startDaysAhead * 24 * 60 * 60 * 1000);
+  const startDate = new Date(getStartOfToday().getTime() + startDaysAhead * 24 * 60 * 60 * 1000);
   const startDateISO = startDate.toISOString();
 
   let query = supabase
@@ -159,7 +159,7 @@ async function getUpcomingEvents(userId, daysAhead = null, startDaysAhead = 0) {
 
   // If daysAhead specified, limit the range (0 = today only, 7 = this week, etc.)
   if (daysAhead !== null) {
-    const endDate = new Date(getStartOfTodayIsrael().getTime() + (daysAhead + 1) * 24 * 60 * 60 * 1000);
+    const endDate = new Date(getStartOfToday().getTime() + (daysAhead + 1) * 24 * 60 * 60 * 1000);
     query = query.lt('datetime', endDate.toISOString());
   }
 
@@ -178,7 +178,7 @@ async function getUpcomingEvents(userId, daysAhead = null, startDaysAhead = 0) {
  * Get upcoming events by explicit date range (ISO strings)
  */
 async function getUpcomingEventsByDateRange(userId, startDate = null, endDate = null) {
-  const startISO = startDate || getStartOfTodayIsrael().toISOString();
+  const startISO = startDate || getStartOfToday().toISOString();
 
   let query = supabase
     .from('events')
@@ -202,21 +202,26 @@ async function getUpcomingEventsByDateRange(userId, startDate = null, endDate = 
 }
 
 /**
- * Get start of today in Israel timezone as a UTC Date object
+ * Get start of today in a given timezone as a UTC Date object
  */
-function getStartOfTodayIsrael() {
-  // Get Israel offset by comparing UTC and Israel formatted times
+function getStartOfToday(timezone = 'Asia/Jerusalem') {
+  // Get timezone offset by comparing UTC and timezone formatted times
   const now = new Date();
   const utcStr = now.toLocaleString('en-US', { timeZone: 'UTC', hour12: false });
-  const ilStr = now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem', hour12: false });
-  const offsetMs = new Date(ilStr) - new Date(utcStr);
+  const tzStr = now.toLocaleString('en-US', { timeZone: timezone, hour12: false });
+  const offsetMs = new Date(tzStr) - new Date(utcStr);
 
-  // Shift now by Israel offset to get Israel local time, then zero out hours
-  const israelNow = new Date(now.getTime() + offsetMs);
-  israelNow.setUTCHours(0, 0, 0, 0);
+  // Shift now by timezone offset to get local time, then zero out hours
+  const localNow = new Date(now.getTime() + offsetMs);
+  localNow.setUTCHours(0, 0, 0, 0);
 
   // Shift back to UTC
-  return new Date(israelNow.getTime() - offsetMs);
+  return new Date(localNow.getTime() - offsetMs);
+}
+
+async function getUserTimezone(userId) {
+  const { data } = await supabase.from('users').select('timezone').eq('id', userId).single();
+  return data?.timezone || 'Asia/Jerusalem';
 }
 
 async function getEventsMatchingContent(userId, content) {
@@ -251,7 +256,7 @@ async function deleteAllEvents(userId) {
     .from('events')
     .select('id')
     .eq('user_id', userId)
-    .gte('datetime', getStartOfTodayIsrael().toISOString());
+    .gte('datetime', getStartOfToday().toISOString());
 
   if (data && data.length > 0) {
     for (const event of data) {
@@ -283,7 +288,7 @@ async function deleteTaskByContent(userId, content) {
  * Get all today's events for all active users (for daily 6am summary)
  */
 async function getTodayEventsAllUsers() {
-  const startOfToday = getStartOfTodayIsrael();
+  const startOfToday = getStartOfToday();
   const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 
   const { data, error } = await supabase
@@ -306,7 +311,7 @@ async function getTodayEventsAllUsers() {
  * Get all tomorrow's events for all active users (for 9pm evening summary)
  */
 async function getTomorrowEventsAllUsers() {
-  const startOfToday = getStartOfTodayIsrael();
+  const startOfToday = getStartOfToday();
   const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
   const endOfTomorrow = new Date(startOfTomorrow.getTime() + 24 * 60 * 60 * 1000);
 
@@ -672,7 +677,7 @@ async function deleteRecurringEventByContent(userId, content) {
  * Check if an event from a recurring pattern already exists today
  */
 async function recurringEventExistsToday(userId, title, datetime) {
-  const startOfToday = getStartOfTodayIsrael();
+  const startOfToday = getStartOfToday();
   const endOfToday = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
 
   const { data } = await supabase
@@ -1162,4 +1167,6 @@ module.exports = {
   getShoppingItemById,
   getUnpushedShoppingItems,
   markShoppingPushed,
+  getStartOfToday,
+  getUserTimezone,
 };

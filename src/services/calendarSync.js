@@ -155,10 +155,11 @@ async function pullFromGoogle(userId, connectionId, tokens, syncToken, calendarI
 async function pushToGoogle(userId, tokens, calendarId) {
   try {
     const unpushedEvents = await db.getUnpushedEvents(userId);
+    const tz = (await db.getUserTimezone(userId)) || 'Asia/Jerusalem';
 
     for (const event of unpushedEvents) {
       try {
-        const gEvent = await googleCalendar.createEvent(tokens, event, calendarId);
+        const gEvent = await googleCalendar.createEvent(tokens, event, calendarId, tz);
         await db.markEventPushed(event.id, gEvent.id, 'google');
         logger.info('calendarSync', 'Event pushed to Google', { userId, title: event.title });
       } catch (error) {
@@ -193,7 +194,8 @@ async function pushEventToGoogle(userId, eventId) {
     const event = await db.getEventById(eventId);
     if (!event || event.external_id) return;
 
-    const gEvent = await googleCalendar.createEvent(currentTokens, event, calId);
+    const tz = (await db.getUserTimezone(userId)) || 'Asia/Jerusalem';
+    const gEvent = await googleCalendar.createEvent(currentTokens, event, calId, tz);
     await db.markEventPushed(event.id, gEvent.id, 'google');
     logger.info('calendarSync', 'Event immediately pushed to Google', { userId, title: event.title });
   } catch (error) {
@@ -283,10 +285,11 @@ async function pullFromApple(userId, connectionId, credentials, calendarUrl) {
 async function pushToApple(userId, credentials, calendarUrl) {
   try {
     const unpushedEvents = await db.getUnpushedEvents(userId);
+    const tz = (await db.getUserTimezone(userId)) || 'Asia/Jerusalem';
 
     for (const event of unpushedEvents) {
       try {
-        const result = await appleCalendar.createEvent(credentials, calendarUrl, event);
+        const result = await appleCalendar.createEvent(credentials, calendarUrl, event, tz);
         const externalId = result.uid || result.url;
         if (externalId) {
           await db.markEventPushed(event.id, externalId, 'apple');
@@ -311,7 +314,8 @@ async function pushEventToApple(userId, eventId) {
     const event = await db.getEventById(eventId);
     if (!event || event.external_id) return;
 
-    const result = await appleCalendar.createEvent(connection.credentials, connection.calendar_id, event);
+    const tz = (await db.getUserTimezone(userId)) || 'Asia/Jerusalem';
+    const result = await appleCalendar.createEvent(connection.credentials, connection.calendar_id, event, tz);
     const externalId = result.uid || result.url;
     if (externalId) {
       await db.markEventPushed(event.id, externalId, 'apple');
