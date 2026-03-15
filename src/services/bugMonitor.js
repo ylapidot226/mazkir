@@ -6,15 +6,25 @@ const config = require('../config');
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '35795167764@c.us';
 const HOURS_BACK = 6;
 
+// Track last report time to prevent duplicates
+let lastReportTime = 0;
+
 /**
  * Check if it's time to send the bug report (every 6 hours Israel time: 7am, 1pm, 7pm, 1am)
  */
 function isBugReportTime() {
-  const now = new Date();
-  const ilTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const now = Date.now();
+  // Don't send more than once per 5 hours
+  if (now - lastReportTime < 5 * 60 * 60 * 1000) return false;
+
+  const ilTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
   const hour = ilTime.getHours();
   const minute = ilTime.getMinutes();
-  return [7, 13, 19, 1].includes(hour) && minute < 5;
+  if ([7, 13, 19, 1].includes(hour) && minute < 5) {
+    lastReportTime = now;
+    return true;
+  }
+  return false;
 }
 
 /**

@@ -155,7 +155,7 @@ async function checkHourlyReminders() {
       if (!phone) continue;
 
       const time = formatTime(event.datetime);
-      const loc = event.location ? `\n📍 ${event.location}` : '';
+      const loc = event.location && event.location !== 'Asia/Jerusalem' ? `\n📍 ${event.location}` : '';
       const message = `⏰ בעוד שעה: ${event.title} ב-${time}${loc}`;
 
       await greenApi.sendMessage(phone, message);
