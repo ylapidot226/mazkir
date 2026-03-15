@@ -167,6 +167,18 @@ async function processWebhook(body) {
     // Get conversation history for context
     const history = await db.getRecentMessages(user.id, 8);
 
+    // First-time user: send welcome message with all features
+    if (history.length === 0) {
+      const name = user.name || senderName || '';
+      const cleanName = name.replace(/<[^>]*>/g, '').trim();
+      const welcome = `היי${cleanName ? ` ${cleanName}` : ''}! 👋 אני המזכיר האישי שלך.\n\nהנה מה שאני יודע לעשות:\n\n📅 *יומן ואירועים*\n"מחר ב-10 פגישה עם דני" — ואני שומר\n"מה יש לי מחר?" — ואני מציג הכל\n\n🔄 *אירועים חוזרים*\n"כל יום שני אימון ב-18:00"\n\n🔔 *תזכורות*\nסיכום יומי ב-21:00 + תזכורת שעה לפני כל אירוע\n"תזכיר לי מחר ב-3 להתקשר לרופא"\n\n📋 *משימות ורשימות*\n"תוסיף לרשימת פסח: לקנות מצות"\n\n🛒 *רשימת קניות*\n"אני צריך חלב, לחם וביצים"\n\n📆 *סנכרון לוח שנה*\nחיבור ל-Google Calendar או Apple Calendar\nפשוט כתוב "חבר לוח שנה"\n\nאפשר לדבר איתי בשפה טבעית — בלי פקודות מיוחדות. נתחיל? 😊`;
+
+      await greenApi.sendMessage(chatId, welcome);
+      await db.saveMessage(user.id, 'user', text);
+      await db.saveMessage(user.id, 'assistant', '[הודעת ברוכים הבאים]');
+      return;
+    }
+
     // Process with AI
     const aiResponse = await claude.processMessage(text, history);
     logger.info('webhook', 'AI response', { action: aiResponse.action, content: aiResponse.content, days: aiResponse.days, time: aiResponse.time, category: aiResponse.category });
