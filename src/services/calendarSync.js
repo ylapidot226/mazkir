@@ -14,7 +14,7 @@ async function syncAllCalendars() {
     for (const conn of connections) {
       try {
         if (conn.provider === 'google') {
-          await syncGoogleCalendar(conn);
+          await syncGoogleCalendarAndTasks(conn);
         } else if (conn.provider === 'apple') {
           await syncAppleCalendar(conn);
           await syncAppleReminders(conn);
@@ -32,6 +32,56 @@ async function syncAllCalendars() {
 }
 
 // ---- Google Calendar Sync ----
+
+async function syncGoogleCalendarAndTasks(connection) {
+  await syncGoogleCalendar(connection);
+  await syncGoogleTasks(connection);
+}
+
+async function syncGoogleTasks(connection) {
+  const { user_id, credentials } = connection;
+  const tokens = JSON.parse(credentials);
+
+  let currentTokens = tokens;
+  try {
+    currentTokens = await googleCalendar.refreshTokensIfNeeded(tokens);
+    if (currentTokens.access_token !== tokens.access_token) {
+      await db.updateCalendarCredentials(connection.id, JSON.stringify(currentTokens));
+    }
+  } catch (error) {
+    return;
+  }
+
+  try {
+    // Pull: Google Tasks → local tasks
+    const gTasks = await googleCalendar.listTasks(currentTokens);
+    for (const gTask of gTasks) {
+      if (!gTask.title || !gTask.id) continue;
+
+      const existing = await db.getTaskByExternalId(user_id, gTask.id);
+      if (!existing) {
+        await db.addTaskFromExternal(user_id, gTask.title, gTask.id);
+        logger.info('calendarSync', 'Task pulled from Google Tasks', { user_id, title: gTask.title });
+      }
+    }
+
+    // Push: local tasks without external_id → Google Tasks
+    const unpushed = await db.getUnpushedTasks(user_id);
+    for (const task of unpushed) {
+      try {
+        const gTask = await googleCalendar.createTask(currentTokens, task.content);
+        if (gTask.id) {
+          await db.markTaskPushed(task.id, gTask.id);
+          logger.info('calendarSync', 'Task pushed to Google Tasks', { user_id, title: task.content });
+        }
+      } catch (error) {
+        logger.error('calendarSync', 'Failed to push task to Google', { error: error.message });
+      }
+    }
+  } catch (error) {
+    logger.error('calendarSync', 'Google Tasks sync failed', { user_id, error: error.message });
+  }
+}
 
 async function syncGoogleCalendar(connection) {
   const { user_id, credentials, sync_token, calendar_id } = connection;
@@ -407,6 +457,67 @@ async function deleteEventFromCalendars(userId, externalId, source) {
   }
 }
 
+/**
+ * Push a task to Google Tasks immediately
+ */
+async function pushTaskToGoogleTasks(userId, taskId) {
+  try {
+    const connection = await db.getCalendarConnection(userId, 'google');
+    if (!connection) return;
+
+    const task = await db.getTaskById(taskId);
+    if (!task || task.external_id) return;
+
+    const tokens = JSON.parse(connection.credentials);
+    const currentTokens = await googleCalendar.refreshTokensIfNeeded(tokens);
+    if (currentTokens.access_token !== tokens.access_token) {
+      await db.updateCalendarCredentials(connection.id, JSON.stringify(currentTokens));
+    }
+
+    const gTask = await googleCalendar.createTask(currentTokens, task.content);
+    if (gTask.id) {
+      await db.markTaskPushed(task.id, gTask.id);
+    }
+  } catch (error) {
+    logger.error('calendarSync', 'Immediate Google Tasks push failed', { userId, error: error.message });
+  }
+}
+
+/**
+ * Complete a task in Google Tasks
+ */
+async function completeTaskInGoogle(userId, externalId) {
+  try {
+    const connection = await db.getCalendarConnection(userId, 'google');
+    if (!connection || !externalId) return;
+
+    const tokens = JSON.parse(connection.credentials);
+    await googleCalendar.completeTask(tokens, externalId);
+  } catch (error) {
+    logger.error('calendarSync', 'Failed to complete Google Task', { userId, error: error.message });
+  }
+}
+
+/**
+ * Push task to all connected providers
+ */
+async function pushTaskToAll(userId, taskId) {
+  await Promise.all([
+    pushTaskToAppleReminders(userId, taskId),
+    pushTaskToGoogleTasks(userId, taskId),
+  ]);
+}
+
+/**
+ * Complete task in all connected providers
+ */
+async function completeTaskInAll(userId, externalId) {
+  await Promise.all([
+    completeReminderInApple(userId, externalId),
+    completeTaskInGoogle(userId, externalId),
+  ]);
+}
+
 module.exports = {
   syncAllCalendars,
   pushEventToGoogle,
@@ -418,4 +529,8 @@ module.exports = {
   pushTaskToAppleReminders,
   pushShoppingToAppleReminders,
   completeReminderInApple,
+  pushTaskToGoogleTasks,
+  completeTaskInGoogle,
+  pushTaskToAll,
+  completeTaskInAll,
 };

@@ -15,7 +15,10 @@ function getAuthUrl(userId) {
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
-    scope: ['https://www.googleapis.com/auth/calendar'],
+    scope: [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/tasks',
+    ],
     state: userId,
   });
 }
@@ -180,6 +183,70 @@ async function refreshTokensIfNeeded(tokens) {
   return credentials;
 }
 
+// ---- Google Tasks ----
+
+/**
+ * List tasks from Google Tasks
+ */
+async function listTasks(tokens, taskListId = '@default') {
+  const { auth } = getCalendarClient(tokens);
+  const tasks = google.tasks({ version: 'v1', auth });
+
+  try {
+    const response = await tasks.tasks.list({
+      tasklist: taskListId,
+      showCompleted: false,
+      maxResults: 100,
+    });
+    return response.data.items || [];
+  } catch (error) {
+    if (error.code === 404) return [];
+    throw error;
+  }
+}
+
+/**
+ * Create a task in Google Tasks
+ */
+async function createTask(tokens, title, taskListId = '@default') {
+  const { auth } = getCalendarClient(tokens);
+  const tasks = google.tasks({ version: 'v1', auth });
+
+  const response = await tasks.tasks.insert({
+    tasklist: taskListId,
+    requestBody: { title, status: 'needsAction' },
+  });
+
+  return response.data;
+}
+
+/**
+ * Complete a task in Google Tasks
+ */
+async function completeTask(tokens, taskId, taskListId = '@default') {
+  const { auth } = getCalendarClient(tokens);
+  const tasks = google.tasks({ version: 'v1', auth });
+
+  await tasks.tasks.patch({
+    tasklist: taskListId,
+    task: taskId,
+    requestBody: { status: 'completed' },
+  });
+}
+
+/**
+ * Delete a task from Google Tasks
+ */
+async function deleteTask(tokens, taskId, taskListId = '@default') {
+  const { auth } = getCalendarClient(tokens);
+  const tasks = google.tasks({ version: 'v1', auth });
+
+  await tasks.tasks.delete({
+    tasklist: taskListId,
+    task: taskId,
+  });
+}
+
 module.exports = {
   getAuthUrl,
   getTokensFromCode,
@@ -188,4 +255,8 @@ module.exports = {
   deleteEvent,
   updateEvent,
   refreshTokensIfNeeded,
+  listTasks,
+  createTask,
+  completeTask: completeTask,
+  deleteTask,
 };

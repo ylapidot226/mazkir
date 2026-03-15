@@ -5,7 +5,7 @@ const greenApi = require('../services/greenApi');
 const claude = require('../services/claude');
 const db = require('../services/database');
 const { generateConnectToken } = require('./calendar');
-const { pushEventToCalendars, deleteEventFromCalendars, pushTaskToAppleReminders, pushShoppingToAppleReminders, completeReminderInApple } = require('../services/calendarSync');
+const { pushEventToCalendars, deleteEventFromCalendars, pushTaskToAll, pushShoppingToAppleReminders, completeTaskInAll } = require('../services/calendarSync');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -171,7 +171,7 @@ async function processWebhook(body) {
     if (history.length === 0) {
       const name = user.name || senderName || '';
       const cleanName = name.replace(/<[^>]*>/g, '').trim();
-      const welcome = `היי${cleanName ? ` ${cleanName}` : ''}! 👋 אני המזכיר האישי שלך.\n\nהנה מה שאני יודע לעשות:\n\n📅 *יומן ואירועים*\n"מחר ב-10 פגישה עם דני" — ואני שומר\n"מה יש לי מחר?" — ואני מציג הכל\n\n🔄 *אירועים חוזרים*\n"כל יום שני אימון ב-18:00"\n\n🔔 *תזכורות*\nסיכום יומי ב-21:00 + תזכורת שעה לפני כל אירוע\n"תזכיר לי מחר ב-3 להתקשר לרופא"\n\n📋 *משימות ורשימות*\n"תוסיף לרשימת פסח: לקנות מצות"\n\n🛒 *רשימת קניות*\n"אני צריך חלב, לחם וביצים"\n\n📆 *סנכרון לוח שנה*\nחיבור ל-Google Calendar או Apple Calendar\nפשוט כתוב "חבר לוח שנה"\n\nאפשר לדבר איתי בשפה טבעית — בלי פקודות מיוחדות. נתחיל? 😊`;
+      const welcome = `היי${cleanName ? ` ${cleanName}` : ''}! 👋\nאני המזכיר האישי שלך.\n\nאני יכול לעזור לך לנהל יומן, תזכורות, משימות ורשימות — פשוט על-ידי הודעה קצרה.\n\n📅 *יומן ואירועים*\nכתוב למשל:\nמחר ב-10 פגישה עם דני\nואני אשמור את האירוע ביומן.\n\nרוצה לראות מה מתוכנן?\nכתוב:\nמה יש לי מחר\nואציג לך את כל האירועים.\n\n🔄 *אירועים קבועים*\nאפשר להגדיר אירועים שחוזרים.\nלדוגמה:\nכל יום שני אימון ב-18:00\nואני אוסיף אותו אוטומטית.\n\n🔔 *תזכורות*\nאני שולח סיכום יומי כל ערב ב-21:00,\nותזכורת שעה לפני כל אירוע.\n\nצריך תזכורת מיוחדת?\nכתוב:\nתזכיר לי מחר ב-15:00 להתקשר לרופא.\n\n📋 *משימות ורשימות*\nאפשר להוסיף משימות ורשימות.\nלדוגמה:\nתוסיף לרשימת פסח לקנות מצות.\n\n🛒 *רשימת קניות*\nאפשר גם להוסיף קניות.\nלדוגמה:\nאני צריך חלב, לחם וביצים.\n\n📆 *סנכרון לוח שנה*\nאפשר לחבר ל-Google Calendar\nאו ל-Apple Calendar.\n\nכדי להתחיל, פשוט כתוב:\nחבר לוח שנה.`;
 
       await greenApi.sendMessage(chatId, welcome);
       await db.saveMessage(user.id, 'user', text);
@@ -248,9 +248,9 @@ async function handlePollVote(userId, chatId, pollStanzaId, votes) {
         } else {
           await db.completeTask(userId, item.id);
         }
-        // Complete in Apple Reminders if synced
+        // Complete in connected providers if synced
         if (item.external_id) {
-          completeReminderInApple(userId, item.external_id).catch(() => {});
+          completeTaskInAll(userId, item.external_id).catch(() => {});
         }
         completedCount++;
       }
@@ -292,7 +292,7 @@ async function executeAction(userId, chatId, aiResponse) {
 
       case 'add_task': {
         const newTask = await db.addTask(userId, category || 'כללי', content);
-        if (newTask) pushTaskToAppleReminders(userId, newTask.id).catch(() => {});
+        if (newTask) pushTaskToAll(userId, newTask.id).catch(() => {});
         break;
       }
 
