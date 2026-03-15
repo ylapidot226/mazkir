@@ -9,8 +9,8 @@ const logger = require('../utils/logger');
 
 // Rate limiting for admin login (#5, #7)
 const adminLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per window
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 30, // 30 attempts per window
   message: { error: 'יותר מדי ניסיונות. נסה שוב בעוד 15 דקות.' },
   standardHeaders: true,
   legacyHeaders: false,
