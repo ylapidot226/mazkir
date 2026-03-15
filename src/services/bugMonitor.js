@@ -7,6 +7,17 @@ const ADMIN_PHONE = process.env.ADMIN_PHONE || '35795167764@c.us';
 const HOURS_BACK = 6;
 
 /**
+ * Check if it's time to send the bug report (every 6 hours Israel time: 7am, 1pm, 7pm, 1am)
+ */
+function isBugReportTime() {
+  const now = new Date();
+  const ilTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const hour = ilTime.getHours();
+  const minute = ilTime.getMinutes();
+  return [7, 13, 19, 1].includes(hour) && minute < 5;
+}
+
+/**
  * Analyze recent conversations and send a bug report to admin
  */
 async function runBugReport() {
@@ -173,4 +184,4 @@ async function runBugReport() {
   }
 }
 
-module.exports = { runBugReport };
+module.exports = { runBugReport, isBugReportTime };
