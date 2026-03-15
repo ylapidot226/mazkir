@@ -78,6 +78,26 @@ app.get('/api/cron/reminders', async (req, res) => {
   }
 });
 
+// Bug monitor cron endpoint - runs every 6 hours
+app.get('/api/cron/bug-report', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const querySecret = req.query.secret;
+  const cronSecret = config.cron.secret;
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { runBugReport } = require('./services/bugMonitor');
+    await runBugReport();
+    res.json({ success: true, timestamp: new Date().toISOString() });
+  } catch (error) {
+    logger.error('cron', 'Bug report failed', error);
+    res.status(500).json({ error: 'Bug report failed' });
+  }
+});
+
 // Start server (only when not running on Vercel)
 if (process.env.VERCEL !== '1') {
   const { startReminderCron } = require('./services/reminders');
