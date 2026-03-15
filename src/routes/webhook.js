@@ -77,6 +77,9 @@ function verifyWebhook(req, res, next) {
   return res.status(403).json({ error: 'Forbidden' });
 }
 
+// Pending user approvals: adminPhone -> { userId, name, email, phone }
+const pendingApprovals = new Map();
+
 // Deduplication: track recently processed messages to avoid duplicates
 const recentMessages = new Map();
 function isDuplicate(idMessage) {
@@ -158,6 +161,32 @@ async function processWebhook(body) {
   }
 
   logger.info('webhook', 'Message received', { sender, senderName });
+
+  // Handle admin approval via WhatsApp reply
+  const ADMIN_PHONE = process.env.ADMIN_PHONE || '35795167764@c.us';
+  if (sender === ADMIN_PHONE && pendingApprovals.has(sender)) {
+    const normalizedText = text.trim().toLowerCase();
+    if (normalizedText === 'כן' || normalizedText === 'yes' || normalizedText === 'אשר') {
+      const pending = pendingApprovals.get(sender);
+      pendingApprovals.delete(sender);
+      try {
+        await db.activateUser(pending.userId);
+        if (pending.email) {
+          const { sendWelcomeEmail } = require('../services/email');
+          sendWelcomeEmail(pending.email, pending.name || '').catch(() => {});
+        }
+        await greenApi.sendMessage(chatId, `✅ ${pending.name} אושר בהצלחה! מייל ברוכים הבאים נשלח.`);
+        logger.info('webhook', 'User approved via WhatsApp', { userId: pending.userId, name: pending.name });
+      } catch (error) {
+        await greenApi.sendMessage(chatId, `❌ שגיאה באישור: ${error.message}`);
+      }
+      return;
+    } else if (normalizedText === 'לא' || normalizedText === 'no') {
+      pendingApprovals.delete(sender);
+      await greenApi.sendMessage(chatId, '👌 בוטל, המשתמש לא אושר.');
+      return;
+    }
+  }
 
   // Check if user exists and is active
   const user = await db.getUser(sender);
@@ -679,3 +708,4 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
 }
 
 module.exports = router;
+module.exports.pendingApprovals = pendingApprovals;

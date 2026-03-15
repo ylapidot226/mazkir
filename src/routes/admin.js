@@ -223,9 +223,15 @@ router.post('/register', registerLimiter, async (req, res) => {
     await db.createUser(normalizedPhone, sanitizedName, email);
     auditLog('New registration', req, { phone: normalizedPhone });
 
-    // Notify admin via WhatsApp
+    // Notify admin via WhatsApp and store pending approval
     const ADMIN_PHONE = process.env.ADMIN_PHONE || '35795167764@c.us';
-    greenApi.sendMessage(ADMIN_PHONE, `🆕 נרשם משתמש חדש!\n\n👤 ${sanitizedName}\n📱 ${normalizedPhone.replace('@c.us', '')}\n📧 ${email}\n\nממתין לאישור בפאנל הניהול.`).catch(() => {});
+    const { data: newUser } = await db.supabase.from('users').select('id').eq('phone_number', normalizedPhone).single();
+    if (newUser) {
+      // Store pending user for quick approval via WhatsApp reply
+      const pendingApprovals = require('./webhook').pendingApprovals;
+      pendingApprovals.set(ADMIN_PHONE, { userId: newUser.id, name: sanitizedName, email, phone: normalizedPhone });
+    }
+    greenApi.sendMessage(ADMIN_PHONE, `🆕 נרשם משתמש חדש!\n\n👤 ${sanitizedName}\n📱 ${normalizedPhone.replace('@c.us', '')}\n📧 ${email}\n\nלאשר? השב *כן* לאישור מיידי.`).catch(() => {});
 
     res.json({ success: true, message: 'נרשמת בהצלחה! נכנסת לרשימת ההמתנה ונעדכן אותך במייל כשהחשבון יאושר 🙌' });
   } catch (error) {
