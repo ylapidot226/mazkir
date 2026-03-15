@@ -165,7 +165,7 @@ async function processWebhook(body) {
   // Process with per-user lock to prevent race conditions
   await withUserLock(user.id, async () => {
     // Get conversation history for context
-    const history = await db.getRecentMessages(user.id, 4);
+    const history = await db.getRecentMessages(user.id, 8);
 
     // Process with AI
     const aiResponse = await claude.processMessage(text, history);
@@ -193,15 +193,17 @@ function getCondensedHistory(action, sentResponse) {
   if (!sentResponse) return null;
   switch (action) {
     case 'query_events':
-      return '[הצגתי את האירועים הקרובים]';
     case 'query_tasks':
-      return '[הצגתי את רשימת המשימות]';
     case 'query_lists':
-      return '[הצגתי את הרשימות]';
     case 'query_shopping':
-      return '[הצגתי את רשימת הקניות]';
-    case 'query_recurring':
-      return '[הצגתי את האירועים החוזרים]';
+    case 'query_recurring': {
+      // Keep the actual response but truncate if too long
+      const maxLen = 400;
+      if (sentResponse.length > maxLen) {
+        return sentResponse.substring(0, maxLen) + '...';
+      }
+      return sentResponse;
+    }
     case 'connect_calendar':
       return '[שלחתי קישור לחיבור לוח שנה]';
     case 'disconnect_calendar':
