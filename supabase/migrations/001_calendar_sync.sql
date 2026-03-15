@@ -32,3 +32,9 @@ CREATE TABLE IF NOT EXISTS connect_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_connect_tokens_token ON connect_tokens(token);
+
+-- 5. Add external_id to tasks and shopping_list (for Apple Reminders sync)
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS external_id TEXT;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE shopping_list ADD COLUMN IF NOT EXISTS external_id TEXT;
+ALTER TABLE shopping_list ADD COLUMN IF NOT EXISTS source TEXT;

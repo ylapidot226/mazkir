@@ -693,7 +693,7 @@ const pollMappings = new Map();
 function savePollMapping(userId, pollMessageId, tasks) {
   const key = `${userId}:${pollMessageId}`;
   pollMappings.set(key, {
-    tasks: tasks.map((t) => ({ id: t.id, content: t.content })),
+    tasks: tasks.map((t) => ({ id: t.id, content: t.content, type: t.type, external_id: t.external_id })),
     createdAt: Date.now(),
   });
   // Clean up old mappings (older than 24h)
@@ -1002,6 +1002,68 @@ async function getUnpushedEvents(userId) {
   return data || [];
 }
 
+// ---- Tasks/Shopping with External ID (Apple Reminders) ----
+
+async function getTaskByExternalId(userId, externalId) {
+  const { data } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('external_id', externalId)
+    .single();
+  return data;
+}
+
+async function getTaskById(taskId) {
+  const { data } = await supabase.from('tasks').select('*').eq('id', taskId).single();
+  return data;
+}
+
+async function addTaskFromExternal(userId, content, externalId) {
+  const { data, error } = await supabase
+    .from('tasks')
+    .insert({ user_id: userId, category: 'כללי', content, external_id: externalId, source: 'apple' })
+    .select()
+    .single();
+  if (error) logger.error('database', 'Failed to add task from external', error);
+  return data;
+}
+
+async function getUnpushedTasks(userId) {
+  const { data } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('completed', false)
+    .is('external_id', null)
+    .order('created_at', { ascending: true });
+  return data || [];
+}
+
+async function markTaskPushed(taskId, externalId) {
+  await supabase.from('tasks').update({ external_id: externalId, source: 'apple' }).eq('id', taskId);
+}
+
+async function getShoppingItemById(itemId) {
+  const { data } = await supabase.from('shopping_list').select('*').eq('id', itemId).single();
+  return data;
+}
+
+async function getUnpushedShoppingItems(userId) {
+  const { data } = await supabase
+    .from('shopping_list')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('done', false)
+    .is('external_id', null)
+    .order('created_at', { ascending: true });
+  return data || [];
+}
+
+async function markShoppingPushed(itemId, externalId) {
+  await supabase.from('shopping_list').update({ external_id: externalId, source: 'apple' }).eq('id', itemId);
+}
+
 async function markEventPushed(eventId, externalId, source) {
   const { error } = await supabase
     .from('events')
@@ -1075,4 +1137,12 @@ module.exports = {
   deleteEventByExternalId,
   getUnpushedEvents,
   markEventPushed,
+  getTaskByExternalId,
+  getTaskById,
+  addTaskFromExternal,
+  getUnpushedTasks,
+  markTaskPushed,
+  getShoppingItemById,
+  getUnpushedShoppingItems,
+  markShoppingPushed,
 };

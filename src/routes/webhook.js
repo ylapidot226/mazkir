@@ -5,7 +5,7 @@ const greenApi = require('../services/greenApi');
 const claude = require('../services/claude');
 const db = require('../services/database');
 const { generateConnectToken } = require('./calendar');
-const { pushEventToCalendars, deleteEventFromCalendars } = require('../services/calendarSync');
+const { pushEventToCalendars, deleteEventFromCalendars, pushTaskToAppleReminders, pushShoppingToAppleReminders, completeReminderInApple } = require('../services/calendarSync');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -236,6 +236,10 @@ async function handlePollVote(userId, chatId, pollStanzaId, votes) {
         } else {
           await db.completeTask(userId, item.id);
         }
+        // Complete in Apple Reminders if synced
+        if (item.external_id) {
+          completeReminderInApple(userId, item.external_id).catch(() => {});
+        }
         completedCount++;
       }
     }
@@ -274,16 +278,19 @@ async function executeAction(userId, chatId, aiResponse) {
         }
         break;
 
-      case 'add_task':
-        await db.addTask(userId, category || 'כללי', content);
+      case 'add_task': {
+        const newTask = await db.addTask(userId, category || 'כללי', content);
+        if (newTask) pushTaskToAppleReminders(userId, newTask.id).catch(() => {});
         break;
+      }
 
       case 'add_shopping': {
         const shoppingItems = items && Array.isArray(items) && items.length > 0
           ? items.map((i) => (typeof i === 'string' ? i : i.content).trim()).filter(Boolean)
           : content.split(',').map((i) => i.trim()).filter(Boolean);
         for (const item of shoppingItems) {
-          await db.addShoppingItem(userId, item);
+          const newItem = await db.addShoppingItem(userId, item);
+          if (newItem) pushShoppingToAppleReminders(userId, newItem.id).catch(() => {});
         }
         break;
       }

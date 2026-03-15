@@ -17,6 +17,7 @@ async function syncAllCalendars() {
           await syncGoogleCalendar(conn);
         } else if (conn.provider === 'apple') {
           await syncAppleCalendar(conn);
+          await syncAppleReminders(conn);
         }
       } catch (error) {
         logger.error('calendarSync', `Failed to sync calendar for user ${conn.user_id}`, {
@@ -275,6 +276,120 @@ async function deleteEventFromApple(userId, externalId) {
   }
 }
 
+// ---- Apple Reminders Sync ----
+
+async function syncAppleReminders(connection) {
+  const { user_id, credentials } = connection;
+
+  try {
+    // Pull: get reminders from Apple → check against local tasks
+    const reminders = await appleCalendar.listReminders(credentials);
+
+    for (const reminder of reminders) {
+      if (!reminder.uid || !reminder.summary) continue;
+
+      // Check if task exists locally with this external_id
+      const existingTask = await db.getTaskByExternalId(user_id, reminder.uid);
+
+      if (existingTask) {
+        // If completed in Apple but not locally, mark as completed
+        if (reminder.completed && !existingTask.completed) {
+          await db.completeTask(user_id, existingTask.id);
+          logger.info('calendarSync', 'Task completed from Apple Reminders', { user_id, title: reminder.summary });
+        }
+      } else if (!reminder.completed) {
+        // New reminder from Apple → create local task
+        await db.addTaskFromExternal(user_id, reminder.summary, reminder.uid);
+        logger.info('calendarSync', 'Task pulled from Apple Reminders', { user_id, title: reminder.summary });
+      }
+    }
+
+    // Push: local tasks without external_id → Apple Reminders
+    const unpushedTasks = await db.getUnpushedTasks(user_id);
+    for (const task of unpushedTasks) {
+      try {
+        const result = await appleCalendar.createReminder(credentials, task.content);
+        if (result.uid) {
+          await db.markTaskPushed(task.id, result.uid);
+          logger.info('calendarSync', 'Task pushed to Apple Reminders', { user_id, title: task.content });
+        }
+      } catch (error) {
+        logger.error('calendarSync', 'Failed to push task to Apple', { user_id, error: error.message });
+      }
+    }
+
+    // Push: local shopping items without external_id → Apple Reminders
+    const unpushedShopping = await db.getUnpushedShoppingItems(user_id);
+    for (const item of unpushedShopping) {
+      try {
+        const result = await appleCalendar.createReminder(credentials, item.item);
+        if (result.uid) {
+          await db.markShoppingPushed(item.id, result.uid);
+          logger.info('calendarSync', 'Shopping item pushed to Apple Reminders', { user_id, item: item.item });
+        }
+      } catch (error) {
+        logger.error('calendarSync', 'Failed to push shopping to Apple', { user_id, error: error.message });
+      }
+    }
+  } catch (error) {
+    logger.error('calendarSync', 'Apple Reminders sync failed', { user_id, error: error.message });
+  }
+}
+
+/**
+ * Push a task to Apple Reminders immediately
+ */
+async function pushTaskToAppleReminders(userId, taskId) {
+  try {
+    const connection = await db.getCalendarConnection(userId, 'apple');
+    if (!connection) return;
+
+    const task = await db.getTaskById(taskId);
+    if (!task || task.external_id) return;
+
+    const result = await appleCalendar.createReminder(connection.credentials, task.content);
+    if (result.uid) {
+      await db.markTaskPushed(task.id, result.uid);
+    }
+  } catch (error) {
+    logger.error('calendarSync', 'Immediate task push failed', { userId, taskId, error: error.message });
+  }
+}
+
+/**
+ * Push a shopping item to Apple Reminders immediately
+ */
+async function pushShoppingToAppleReminders(userId, itemId) {
+  try {
+    const connection = await db.getCalendarConnection(userId, 'apple');
+    if (!connection) return;
+
+    const item = await db.getShoppingItemById(itemId);
+    if (!item || item.external_id) return;
+
+    const result = await appleCalendar.createReminder(connection.credentials, item.item);
+    if (result.uid) {
+      await db.markShoppingPushed(item.id, result.uid);
+    }
+  } catch (error) {
+    logger.error('calendarSync', 'Immediate shopping push failed', { userId, itemId, error: error.message });
+  }
+}
+
+/**
+ * Complete a reminder in Apple when task/shopping is completed locally
+ */
+async function completeReminderInApple(userId, externalId) {
+  try {
+    const connection = await db.getCalendarConnection(userId, 'apple');
+    if (!connection || !externalId) return;
+
+    await appleCalendar.completeReminder(connection.credentials, externalId);
+  } catch (error) {
+    logger.error('calendarSync', 'Failed to complete Apple reminder', { userId, error: error.message });
+  }
+}
+
 // ---- Combined push/delete for all providers ----
 
 async function pushEventToCalendars(userId, eventId) {
@@ -300,4 +415,7 @@ module.exports = {
   deleteEventFromGoogle,
   deleteEventFromApple,
   deleteEventFromCalendars,
+  pushTaskToAppleReminders,
+  pushShoppingToAppleReminders,
+  completeReminderInApple,
 };
