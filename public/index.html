@@ -16,408 +16,1017 @@
   <meta property="og:image:height" content="1024">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-    :root{
-      --bg:#0a0f14;--bg2:#0d1418;--bg3:#111921;
-      --wa-dark:#0b141a;--wa-panel:#1f2c33;--wa-sent:#005c4b;--wa-input:#202c33;
-      --green:#25d366;--green2:#1ebe5d;--green-dim:rgba(37,211,102,.12);--green-glow:rgba(37,211,102,.25);
-      --teal:#075e54;--blue-check:#53bdeb;
-      --text:#e9edef;--muted:#8696a0;--faint:rgba(255,255,255,.06);
-      --glass:rgba(255,255,255,.04);--border:rgba(255,255,255,.07);--border-h:rgba(37,211,102,.25);
-      --radius:16px;
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #080808;
+      --accent: #7C3AED;
+      --accent-light: #A78BFA;
+      --accent-glow: rgba(124, 58, 237, 0.4);
+      --text: #F1F1F1;
+      --text-muted: #8B8B8B;
+      --glass-bg: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-border-hover: rgba(255, 255, 255, 0.15);
     }
-    html{scroll-behavior:smooth}
-    body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);direction:rtl;overflow-x:hidden;line-height:1.7;-webkit-font-smoothing:antialiased}
 
-    /* ── BG Atmosphere ── */
-    .atmos{position:fixed;inset:0;z-index:-1;pointer-events:none}
-    .atmos i{position:absolute;border-radius:50%;filter:blur(100px);animation:drift 20s ease-in-out infinite alternate}
-    .atmos i:nth-child(1){width:55vw;height:55vw;background:rgba(37,211,102,.05);top:-20%;right:-15%;animation-duration:28s}
-    .atmos i:nth-child(2){width:45vw;height:45vw;background:rgba(7,94,84,.06);bottom:-10%;left:-10%;animation-duration:34s;animation-direction:alternate-reverse}
-    .atmos i:nth-child(3){width:30vw;height:30vw;background:rgba(52,183,241,.03);top:40%;left:50%;animation-duration:24s}
-    @keyframes drift{to{transform:translate(60px,-60px) scale(1.08)}}
+    html { scroll-behavior: smooth; }
 
-    .container{max-width:1120px;margin:0 auto;padding:0 1.5rem}
-
-    /* ── NAV ── */
-    .nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:.65rem 0;background:rgba(10,15,20,.6);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-bottom:1px solid var(--border);transition:background .4s}
-    .nav.scrolled{background:rgba(10,15,20,.92)}
-    .nav .container{display:flex;justify-content:space-between;align-items:center}
-    .nav-brand{display:flex;align-items:center;gap:.45rem;text-decoration:none}
-    .nav-brand img{height:32px;border-radius:8px}
-    .nav-brand span{font-weight:800;font-size:1.15rem;color:#fff}
-    .nav-links{display:flex;align-items:center;gap:1.6rem}
-    .nav-links a{color:var(--muted);text-decoration:none;font-size:.88rem;font-weight:500;transition:color .2s}
-    .nav-links a:hover{color:#fff}
-    .cta-pill{padding:.5rem 1.3rem;background:var(--green);color:#fff;border:none;border-radius:100px;font-weight:700;font-size:.88rem;cursor:pointer;font-family:inherit;transition:all .25s;text-decoration:none;display:inline-block}
-    .cta-pill:hover{background:var(--green2);box-shadow:0 4px 24px var(--green-glow);transform:translateY(-1px)}
-
-    /* ── HERO ── */
-    .hero{min-height:100vh;min-height:100svh;display:flex;align-items:center;padding:6rem 0 4rem;position:relative}
-    .hero .container{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;align-items:center;width:100%}
-    .hero-txt{position:relative;z-index:2}
-    .badge{display:inline-flex;align-items:center;gap:.45rem;padding:.35rem 1rem;border-radius:100px;background:var(--green-dim);font-size:.82rem;color:var(--green);font-weight:600;margin-bottom:1.6rem;border:1px solid rgba(37,211,102,.15)}
-    .badge i{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-    .hero h1{font-size:clamp(2.4rem,5.5vw,4rem);font-weight:900;line-height:1.15;margin-bottom:1.2rem;letter-spacing:-.02em}
-    .hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--green),#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .hero-sub{font-size:1.1rem;color:var(--muted);max-width:460px;margin-bottom:2.5rem;line-height:1.85}
-    .hero-cta{display:inline-flex;align-items:center;gap:.6rem;padding:.95rem 2.4rem;background:var(--green);color:#fff;border:none;border-radius:100px;font-size:1.05rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .3s;text-decoration:none;box-shadow:0 6px 32px var(--green-glow)}
-    .hero-cta:hover{background:var(--green2);transform:translateY(-3px);box-shadow:0 12px 48px rgba(37,211,102,.35)}
-    .hero-cta svg{width:18px;height:18px;transition:transform .3s}
-    .hero-cta:hover svg{transform:translateX(-5px)}
-
-    /* ── PHONE ── */
-    .phone-wrap{display:flex;justify-content:center;perspective:1200px}
-    .phone{width:310px;background:var(--wa-dark);border-radius:36px;overflow:hidden;position:relative;transform:rotateY(-6deg) rotateX(2deg);transition:transform .7s cubic-bezier(.16,1,.3,1);box-shadow:0 40px 100px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04),inset 0 0 0 1px rgba(255,255,255,.04),0 0 80px rgba(37,211,102,.06)}
-    .phone:hover{transform:rotateY(-1deg) rotateX(.5deg)}
-    .phone::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:110px;height:26px;background:#000;border-radius:0 0 14px 14px;z-index:10}
-    .ph-head{background:var(--wa-panel);padding:.6rem .8rem;display:flex;align-items:center;gap:.6rem;margin-top:26px}
-    .ph-ava{width:34px;height:34px;border-radius:50%;overflow:hidden;flex-shrink:0}
-    .ph-ava img{width:100%;height:100%;object-fit:cover}
-    .ph-info{flex:1}
-    .ph-name{font-size:.88rem;font-weight:600;color:var(--text)}
-    .ph-stat{font-size:.68rem;color:var(--green)}
-    .ph-msgs{padding:.6rem;min-height:320px;max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:.35rem;background:var(--wa-dark)}
-    .ph-msgs::-webkit-scrollbar{width:0}
-    .bub{max-width:86%;padding:.4rem .55rem;border-radius:8px;font-size:.78rem;line-height:1.5;opacity:0;transform:translateY(12px) scale(.92)}
-    .bub.show{opacity:1;transform:none;animation:pop .35s cubic-bezier(.2,.9,.3,1.3)}
-    @keyframes pop{0%{opacity:0;transform:translateY(12px) scale(.88)}60%{transform:translateY(-2px) scale(1.02)}100%{opacity:1;transform:none}}
-    .bub.s{background:var(--wa-sent);color:var(--text);align-self:flex-end;border-bottom-right-radius:2px}
-    .bub.r{background:var(--wa-panel);color:var(--text);align-self:flex-start;border-bottom-left-radius:2px}
-    .bub .t{font-size:.58rem;color:rgba(255,255,255,.35);text-align:left;margin-top:.1rem;display:flex;justify-content:flex-end;gap:.15rem}
-    .bub.s .t .ck{color:var(--blue-check)}
-    .dots{align-self:flex-start;background:var(--wa-panel);padding:.5rem .7rem;border-radius:8px;display:flex;gap:.2rem;opacity:0;transition:opacity .25s}
-    .dots.on{opacity:1}
-    .dots b{width:5px;height:5px;border-radius:50%;background:var(--muted);animation:dot 1.2s infinite}
-    .dots b:nth-child(2){animation-delay:.15s}
-    .dots b:nth-child(3){animation-delay:.3s}
-    @keyframes dot{0%,70%,100%{transform:translateY(0);opacity:.35}35%{transform:translateY(-3px);opacity:1}}
-    .ph-bar{background:var(--wa-panel);padding:.4rem .5rem;display:flex;align-items:center;gap:.4rem}
-    .ph-bar-in{flex:1;background:var(--faint);border:none;border-radius:20px;padding:.42rem .8rem;color:var(--muted);font-size:.75rem;font-family:inherit;direction:rtl}
-    .ph-bar-btn{width:34px;height:34px;border-radius:50%;background:var(--green);border:none;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
-
-    /* ── STATS ── */
-    .stats{padding:3rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg2)}
-    .stats-row{display:flex;justify-content:center;align-items:center;gap:3rem;flex-wrap:wrap}
-    .stat{text-align:center}
-    .stat strong{display:block;font-size:1.6rem;font-weight:900;color:var(--green)}
-    .stat span{font-size:.82rem;color:var(--muted)}
-    .stat-sep{width:1px;height:36px;background:var(--border)}
-
-    /* ── SECTION COMMON ── */
-    .sec{padding:5.5rem 0}
-    .sec-tag{text-align:center;font-size:.8rem;color:var(--green);letter-spacing:2px;font-weight:700;margin-bottom:.6rem}
-    .sec-h{text-align:center;font-size:clamp(1.7rem,3.5vw,2.5rem);font-weight:900;margin-bottom:.6rem;color:#fff}
-    .sec-sub{text-align:center;color:var(--muted);max-width:520px;margin:0 auto 3.5rem;font-size:1rem}
-
-    /* ── FEATURES ── */
-    .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.3rem}
-    .feat{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);padding:1.8rem;position:relative;overflow:hidden;transition:all .4s cubic-bezier(.16,1,.3,1)}
-    .feat::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top center,rgba(37,211,102,.05),transparent 65%);opacity:0;transition:opacity .4s}
-    .feat:hover{border-color:var(--border-h);transform:translateY(-5px);box-shadow:0 20px 60px rgba(0,0,0,.25)}
-    .feat:hover::after{opacity:1}
-    .feat-ico{width:48px;height:48px;border-radius:12px;background:var(--green-dim);display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:1rem;position:relative;z-index:1;animation:bob 3s ease-in-out infinite}
-    .feat:nth-child(even) .feat-ico{animation-delay:1.5s}
-    @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-    .feat h3{font-size:1.05rem;font-weight:700;margin-bottom:.4rem;position:relative;z-index:1}
-    .feat h3 .ck{color:var(--blue-check);font-size:.8rem;margin-right:.25rem;font-weight:400}
-    .feat p{color:var(--muted);font-size:.88rem;line-height:1.7;position:relative;z-index:1}
-
-    /* ── HOW IT WORKS ── */
-    .how{background:var(--bg2)}
-    .steps{max-width:660px;margin:0 auto;position:relative;display:flex;flex-direction:column;gap:2.5rem}
-    .steps::before{content:'';position:absolute;right:25px;top:52px;bottom:52px;width:2px;background:linear-gradient(var(--green),transparent)}
-    .step{display:grid;grid-template-columns:52px 1fr;gap:1.2rem}
-    .step-n{width:52px;height:52px;border-radius:50%;background:var(--bg);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1.1rem;color:var(--green);position:relative;z-index:2;box-shadow:0 0 20px var(--green-glow)}
-    .step-body h3{font-weight:700;font-size:1.1rem;margin-bottom:.35rem}
-    .step-body p{color:var(--muted);font-size:.92rem;margin-bottom:.8rem}
-    .step-demo{background:var(--wa-dark);border-radius:12px;padding:.7rem;border:1px solid var(--border);display:flex;flex-direction:column;gap:.3rem}
-    .step-demo .bub{opacity:1;transform:none;font-size:.78rem;padding:.4rem .55rem}
-
-    /* ── CTA ── */
-    .cta-wrap{max-width:480px;margin:0 auto;border-radius:20px;padding:2.5rem;background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border);text-align:center;position:relative;overflow:hidden}
-    .cta-wrap::before{content:'';position:absolute;inset:-50%;width:200%;height:200%;background:conic-gradient(from 0deg,transparent,rgba(37,211,102,.06),transparent 30%);animation:spin 10s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .cta-wrap>*{position:relative;z-index:1}
-    .cta-wrap h2{font-size:1.7rem;font-weight:900;margin-bottom:.3rem;color:#fff}
-    .cta-wrap .sub{color:var(--muted);margin-bottom:1.5rem;font-size:.92rem}
-    .fg{margin-bottom:.6rem}
-    .fg input,.fg select{width:100%;padding:.8rem 1rem;background:var(--faint);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:.92rem;font-family:inherit;transition:border .25s;direction:rtl}
-    .fg input::placeholder{color:var(--muted)}
-    .fg input:focus,.fg select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(37,211,102,.12)}
-    .ph-row{display:flex;gap:.4rem;direction:ltr}
-    .ph-row select{width:100px;padding:.8rem .4rem;background:var(--faint);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:.82rem;font-family:inherit}
-    .ph-row select option{background:var(--bg3);color:var(--text)}
-    .ph-row input{flex:1;text-align:left}
-    .sub-btn{width:100%;padding:.9rem;background:var(--green);color:#fff;border:none;border-radius:100px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .25s;margin-top:.3rem;display:flex;align-items:center;justify-content:center;gap:.4rem}
-    .sub-btn:hover{background:var(--green2);transform:translateY(-2px);box-shadow:0 6px 28px var(--green-glow)}
-    .sub-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
-    .sub-btn .sp{display:none;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .5s linear infinite}
-    .sub-btn.ld .bt{display:none}
-    .sub-btn.ld .sp{display:block}
-    .f-note{color:var(--muted);font-size:.78rem;margin-top:.8rem}
-    .f-ok{display:none;padding:.8rem;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);border-radius:12px;color:var(--green);margin-top:.8rem;font-weight:500}
-
-    /* ── FOOTER ── */
-    footer{padding:2rem 0;text-align:center;border-top:1px solid var(--border);background:rgba(0,0,0,.15)}
-    .foot-brand{display:flex;align-items:center;justify-content:center;gap:.4rem;margin-bottom:.5rem}
-    .foot-brand img{height:26px;border-radius:6px}
-    .foot-brand span{font-weight:800;font-size:1rem;color:var(--text)}
-    footer p{color:var(--muted);font-size:.82rem}
-
-    /* ── SCROLL ANIM ── */
-    .ao{opacity:0;transform:translateY(35px);transition:all .7s cubic-bezier(.16,1,.3,1)}
-    .ao.v{opacity:1;transform:none}
-    .ao.d1{transition-delay:.08s}.ao.d2{transition-delay:.16s}.ao.d3{transition-delay:.24s}.ao.d4{transition-delay:.32s}
-
-    /* ── RESPONSIVE ── */
-    @media(max-width:960px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:768px){
-      .hero .container{grid-template-columns:1fr;text-align:center;gap:2rem}
-      .hero-sub{margin-left:auto;margin-right:auto}
-      .hero-cta{margin:0 auto}
-      .phone{width:280px;transform:none}.phone:hover{transform:none}
-      .nav-links a:not(.cta-pill){display:none}
-      .feat-grid{grid-template-columns:1fr}
-      .stats-row{gap:1.5rem}.stat-sep{display:none}
-      .step{grid-template-columns:42px 1fr;gap:.8rem}
-      .steps::before{right:20px}
-      .cta-wrap{margin:0 .5rem;padding:2rem 1.2rem}
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      direction: rtl;
+      overflow-x: hidden;
+      line-height: 1.6;
     }
-    @media(max-width:400px){.phone{width:260px}.hero h1{font-size:2rem}}
+
+    /* Grain texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    }
+
+    /* Animated gradient background */
+    .bg-gradient {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .bg-gradient::before {
+      content: '';
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.15), transparent 70%);
+      top: -200px;
+      right: -100px;
+      animation: floatGrad1 20s ease-in-out infinite;
+    }
+    .bg-gradient::after {
+      content: '';
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
+      bottom: -100px;
+      left: -100px;
+      animation: floatGrad2 25s ease-in-out infinite;
+    }
+    @keyframes floatGrad1 {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(-80px, 80px); }
+    }
+    @keyframes floatGrad2 {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(60px, -60px); }
+    }
+
+    /* Cursor glow */
+    .cursor-glow {
+      position: fixed;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.08), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      transform: translate(-50%, -50%);
+      transition: left 0.3s ease, top 0.3s ease;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1rem 0;
+      background: rgba(8, 8, 8, 0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    nav .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 1.3rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-light), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-cta {
+      padding: 0.5rem 1.2rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .nav-cta:hover { background: #6D28D9; transform: translateY(-1px); }
+
+    /* Hero */
+    .hero {
+      padding: 10rem 0 6rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: center;
+    }
+    .hero-content { position: relative; z-index: 2; }
+    .hero-badge {
+      display: inline-block;
+      padding: 0.4rem 1rem;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 100px;
+      font-size: 0.85rem;
+      color: var(--accent-light);
+      margin-bottom: 1.5rem;
+      backdrop-filter: blur(10px);
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 5vw, 4.5rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 1.2rem;
+      background: linear-gradient(135deg, #fff 0%, var(--accent-light) 50%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-weight: 300;
+      max-width: 480px;
+      line-height: 1.7;
+    }
+    .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .btn-primary {
+      padding: 0.85rem 1.8rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
+    .btn-primary:hover::after { opacity: 1; }
+    .btn-outline {
+      padding: 0.85rem 1.8rem;
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent-light); }
+
+    /* WhatsApp Mockup */
+    .wa-mockup {
+      background: #111B21;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.05);
+      max-width: 360px;
+      margin: 0 auto;
+    }
+    .wa-header {
+      background: #1F2C33;
+      padding: 0.8rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+    }
+    .wa-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #3B82F6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+    .wa-name { font-size: 0.95rem; font-weight: 600; color: #E9EDEF; }
+    .wa-status { font-size: 0.75rem; color: #8696A0; }
+    .wa-messages {
+      padding: 1rem;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      background: url("data:image/svg+xml,%3Csvg width='400' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='20' cy='20' r='1' fill='rgba(255,255,255,0.02)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='%230B141A'/%3E%3Crect width='100%25' height='100%25' fill='url(%23p)'/%3E%3C/svg%3E");
+    }
+    .wa-msg {
+      max-width: 85%;
+      padding: 0.5rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.4s ease;
+    }
+    .wa-msg.visible { opacity: 1; transform: translateY(0); }
+    .wa-msg.sent {
+      background: #005C4B;
+      color: #E9EDEF;
+      align-self: flex-end;
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 2px;
+    }
+    .wa-msg.received {
+      background: #1F2C33;
+      color: #E9EDEF;
+      align-self: flex-start;
+      border-bottom-right-radius: 8px;
+      border-bottom-left-radius: 2px;
+    }
+    .wa-msg .time {
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.45);
+      text-align: left;
+      margin-top: 0.2rem;
+    }
+    .wa-typing {
+      align-self: flex-start;
+      background: #1F2C33;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      display: flex;
+      gap: 0.3rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .wa-typing.visible { opacity: 1; }
+    .wa-typing span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #8696A0;
+      animation: typingDot 1.4s infinite;
+    }
+    .wa-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .wa-typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typingDot {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    /* Social Proof */
+    .social-proof {
+      padding: 3rem 0;
+      text-align: center;
+      border-top: 1px solid var(--glass-border);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .social-proof-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .avatars {
+      display: flex;
+      margin-left: 0.5rem;
+    }
+    .avatars span {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      margin-right: -8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+    .avatars span:nth-child(1) { background: linear-gradient(135deg, #7C3AED, #3B82F6); }
+    .avatars span:nth-child(2) { background: linear-gradient(135deg, #059669, #10B981); }
+    .avatars span:nth-child(3) { background: linear-gradient(135deg, #F59E0B, #EF4444); }
+    .avatars span:nth-child(4) { background: linear-gradient(135deg, #EC4899, #8B5CF6); }
+    .social-proof-text {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .social-proof-text strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .counter { font-variant-numeric: tabular-nums; }
+
+    /* Features */
+    .features {
+      padding: 6rem 0;
+    }
+    .section-label {
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--accent-light);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 0.8rem;
+      font-weight: 600;
+    }
+    .section-title {
+      text-align: center;
+      font-size: clamp(1.8rem, 3vw, 2.5rem);
+      font-weight: 700;
+      margin-bottom: 3rem;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s;
+    }
+    .feature-card:hover {
+      border-color: var(--glass-border-hover);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), rgba(124, 58, 237, 0.3));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1.2rem;
+      box-shadow: 0 0 30px var(--accent-glow);
+    }
+    .feature-card h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.6rem;
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    /* How it works */
+    .how-it-works {
+      padding: 6rem 0;
+    }
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 3rem;
+      max-width: 700px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .steps::before {
+      content: '';
+      position: absolute;
+      right: 24px;
+      top: 48px;
+      bottom: 48px;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent), transparent);
+    }
+    .step {
+      display: grid;
+      grid-template-columns: 50px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    .step-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--glass-bg);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--accent-light);
+      box-shadow: 0 0 20px var(--accent-glow);
+      position: relative;
+      z-index: 2;
+    }
+    .step-content h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .step-content p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      font-weight: 300;
+    }
+    .step-chat {
+      background: #111B21;
+      border-radius: 12px;
+      padding: 0.8rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .step-chat .wa-msg {
+      opacity: 1;
+      transform: none;
+      font-size: 0.8rem;
+      padding: 0.4rem 0.6rem;
+    }
+
+    /* CTA Section */
+    .cta-section {
+      padding: 6rem 0;
+    }
+    .cta-card {
+      max-width: 550px;
+      margin: 0 auto;
+      padding: 3rem;
+      border-radius: 20px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-card::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 22px;
+      padding: 2px;
+      background: conic-gradient(from var(--border-angle, 0deg), var(--accent), transparent 30%, var(--accent) 60%, transparent 90%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      animation: rotateBorder 4s linear infinite;
+    }
+    @property --border-angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+    @keyframes rotateBorder {
+      to { --border-angle: 360deg; }
+    }
+    .cta-card h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .cta-card .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-weight: 300;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+      position: relative;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: all 0.3s;
+      direction: rtl;
+    }
+    .form-group input::placeholder { color: #555; }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 0.95rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-family: inherit;
+      position: relative;
+    }
+    .submit-btn:hover { background: #6D28D9; transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .submit-btn .spinner {
+      display: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin: 0 auto;
+    }
+    .submit-btn.loading .btn-text { display: none; }
+    .submit-btn.loading .spinner { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .form-note {
+      color: #555;
+      font-size: 0.8rem;
+      margin-top: 1rem;
+    }
+    .form-success {
+      display: none;
+      padding: 1rem;
+      background: rgba(5, 150, 105, 0.15);
+      border: 1px solid rgba(5, 150, 105, 0.3);
+      border-radius: 12px;
+      color: #34D399;
+      margin-top: 1rem;
+    }
+
+    /* Footer */
+    footer {
+      padding: 2rem 0;
+      text-align: center;
+      border-top: 1px solid var(--glass-border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    footer .logo { font-size: 1.1rem; margin-bottom: 0.5rem; display: block; }
+
+    /* Animations */
+    .animate-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .animate-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Ripple effect */
+    .ripple {
+      position: relative;
+      overflow: hidden;
+    }
+    .ripple-effect {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(0);
+      animation: rippleAnim 0.6s linear;
+      pointer-events: none;
+    }
+    @keyframes rippleAnim {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 8rem 0 4rem;
+        text-align: center;
+      }
+      .hero-subtitle { margin: 0 auto 2rem; }
+      .hero-buttons { justify-content: center; }
+      .wa-mockup { max-width: 320px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 40px 1fr; gap: 1rem; }
+      .steps::before { right: 19px; }
+      .cta-card { padding: 2rem 1.5rem; }
+    }
   </style>
 </head>
 <body>
 
-<div class="atmos"><i></i><i></i><i></i></div>
+<div class="bg-gradient"></div>
+<div class="cursor-glow" id="cursorGlow"></div>
 
-<!-- NAV -->
-<header class="nav" id="nav">
+<!-- Nav -->
+<nav>
   <div class="container">
-    <a href="#" class="nav-brand"><img src="/logo.png" alt="מזכיר"><span>מזכיר</span></a>
-    <nav class="nav-links">
-      <a href="#features">פיצ'רים</a>
-      <a href="#how">איך זה עובד</a>
-      <a href="#signup" class="cta-pill">הצטרף בחינם</a>
-    </nav>
+    <div class="logo"><img src="/logo.png" alt="מזכיר" style="height:36px;vertical-align:middle;margin-left:8px;border-radius:8px;">מזכיר</div>
+    <button class="nav-cta ripple" onclick="scrollToSignup()">הצטרף עכשיו</button>
   </div>
-</header>
+</nav>
 
-<!-- HERO -->
-<section class="hero">
-  <div class="container">
-    <div class="hero-txt ao">
-      <div class="badge"><i></i>המזכיר האישי שלך בוואטסאפ</div>
-      <h1>תפסיק לשכוח.<br><em>תתחיל לעשות.</em></h1>
-      <p class="hero-sub">דבר איתו כמו עם חבר — הוא מבין, שומר ומזכיר. כל ערב ב-9 סיכום של מחר, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
-      <a href="#signup" class="hero-cta" onclick="event.preventDefault();document.getElementById('signup').scrollIntoView({behavior:'smooth'})">
-        התחל בחינם
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      </a>
+<!-- Hero -->
+<section class="hero container">
+  <div class="hero-content animate-in">
+    <div class="hero-badge">&#10022; המזכיר החכם שלך בוואטסאפ</div>
+    <h1>תפסיק לשכוח.<br>תתחיל לעשות.</h1>
+    <p class="hero-subtitle">דבר איתו כמו עם חבר — הוא מבין, שומר ומתזכר אותך. כל ערב ב-9 מקבלים סיכום של מחר, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
+    <div class="hero-buttons">
+      <button class="btn-primary ripple" onclick="scrollToSignup()">התחל בחינם &larr;</button>
+      <button class="btn-outline ripple" onclick="scrollToHowItWorks()">איך זה עובד?</button>
     </div>
-    <div class="phone-wrap ao d2">
-      <div class="phone" id="phone">
-        <div class="ph-head">
-          <div class="ph-ava"><img src="/logo.png" alt></div>
-          <div class="ph-info"><div class="ph-name">מזכיר</div><div class="ph-stat">מחובר</div></div>
+  </div>
+  <div class="animate-in" style="animation-delay: 0.2s">
+    <div class="wa-mockup" id="heroMockup">
+      <div class="wa-header">
+        <div class="wa-avatar"><img src="/logo.png" alt="מזכיר" style="width:36px;height:36px;border-radius:50%;object-fit:cover;"></div>
+        <div>
+          <div class="wa-name">מזכיר</div>
+          <div class="wa-status">מחובר</div>
         </div>
-        <div class="ph-msgs" id="chat">
-          <div class="dots" id="dots"><b></b><b></b><b></b></div>
-        </div>
-        <div class="ph-bar">
-          <div class="ph-bar-in">הקלד הודעה</div>
-          <div class="ph-bar-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></div>
-        </div>
+      </div>
+      <div class="wa-messages" id="heroChat">
+        <div class="wa-typing" id="heroTyping"><span></span><span></span><span></span></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- STATS -->
-<section class="stats">
+<!-- Social Proof -->
+<section class="social-proof">
   <div class="container">
-    <div class="stats-row ao">
-      <div class="stat"><strong><span class="ctr" data-to="2000">0</span>+</strong><span>משתמשים</span></div>
-      <div class="stat-sep"></div>
-      <div class="stat"><strong>24/7</strong><span>זמין תמיד</span></div>
-      <div class="stat-sep"></div>
-      <div class="stat"><strong>100%</strong><span>בעברית</span></div>
-      <div class="stat-sep"></div>
-      <div class="stat"><strong>0</strong><span>אפליקציות נוספות</span></div>
+    <div class="social-proof-inner animate-in">
+      <div class="avatars">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="social-proof-text">
+        כבר <strong><span class="counter" data-target="2000">0</span>+</strong> אנשים מנהלים את החיים שלהם עם מזכיר
+      </div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="sec" id="features">
+<!-- Features -->
+<section class="features" id="features">
   <div class="container">
-    <div class="sec-tag ao">פיצ'רים</div>
-    <h2 class="sec-h ao">הכל במקום אחד, בשפה שלך</h2>
-    <p class="sec-sub ao">המזכיר החכם שלך מבין עברית טבעית ומנהל את הכל ישירות מוואטסאפ</p>
-    <div class="feat-grid">
-      <div class="feat ao"><div class="feat-ico">&#128197;</div><h3><span class="ck">&#10003;&#10003;</span> אירועים חכמים</h3><p>"מחר ב-9 יש לי פגישה" — כתוב בשפה טבעית והמזכיר שומר הכל. סיכום יומי ב-21:00 ותזכורת שעה לפני כל אירוע.</p></div>
-      <div class="feat ao d1"><div class="feat-ico">&#128269;</div><h3><span class="ck">&#10003;&#10003;</span> מה יש לי?</h3><p>"מה יש לי ביום שני?" או "מה יש לי השבוע?" — שאל ותקבל את כל מה שמתוכנן.</p></div>
-      <div class="feat ao d2"><div class="feat-ico">&#128260;</div><h3><span class="ck">&#10003;&#10003;</span> אירועים חוזרים</h3><p>"כל יום שני עד חמישי אימון ב-18:00" — שומר את התבנית ומייצר אירועים אוטומטית.</p></div>
-      <div class="feat ao"><div class="feat-ico">&#128276;</div><h3><span class="ck">&#10003;&#10003;</span> תזכורות חכמות</h3><p>כל ערב ב-21:00 סיכום של מחר. שעה לפני כל אירוע — תזכורת. אפס שכחה.</p></div>
-      <div class="feat ao d1"><div class="feat-ico">&#128203;</div><h3><span class="ck">&#10003;&#10003;</span> משימות ורשימות</h3><p>הוסף משימות, סדר לפי קטגוריות, וסמן כבוצע ישירות דרך סקר בוואטסאפ.</p></div>
-      <div class="feat ao d2"><div class="feat-ico">&#128722;</div><h3><span class="ck">&#10003;&#10003;</span> רשימת קניות</h3><p>"חלב, לחם וביצים" — שומר, מציג ומסמן פריטים שנקנו. הרשימה תמיד איתך.</p></div>
-      <div class="feat ao"><div class="feat-ico">&#128172;</div><h3><span class="ck">&#10003;&#10003;</span> שיחה טבעית</h3><p>דבר איתו כמו עם חבר — בלי פקודות. הוא מבין עברית טבעית ומגיב בהתאם.</p></div>
-      <div class="feat ao d1"><div class="feat-ico">&#128198;</div><h3><span class="ck">&#10003;&#10003;</span> סנכרון לוח שנה</h3><p>חבר Google Calendar או Apple Calendar — סנכרון דו-כיווני אוטומטי.</p></div>
-      <div class="feat ao d2"><div class="feat-ico">&#9989;</div><h3><span class="ck">&#10003;&#10003;</span> סנכרון תזכורות</h3><p>משימות וקניות מסתנכרנים עם Apple Reminders ו-Google Tasks.</p></div>
+    <div class="section-label animate-in">פיצ'רים</div>
+    <h2 class="section-title animate-in">הכל במקום אחד, בשפה שלך</h2>
+    <div class="features-grid">
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128197;</div>
+        <h3>אירועים חכמים</h3>
+        <p>"מחר ב-9 יש לי פגישה" — כתוב בשפה טבעית והמזכיר שומר הכל. סיכום יומי ב-21:00 ותזכורת שעה לפני כל אירוע.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128269;</div>
+        <h3>מה יש לי?</h3>
+        <p>"מה יש לי ביום שני?" או "מה יש לי השבוע?" — שאל את המזכיר ותקבל את כל האירועים והמשימות ליום או לתקופה שביקשת.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128260;</div>
+        <h3>אירועים חוזרים</h3>
+        <p>"כל יום שני עד חמישי אימון ב-18:00" — המזכיר שומר את התבנית ומייצר אירועים אוטומטית כל שבוע.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128276;</div>
+        <h3>תזכורות חכמות</h3>
+        <p>כל ערב ב-21:00 סיכום של מה שמחכה לך מחר. שעה לפני כל אירוע — תזכורת נוספת. אפס שכחה.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128203;</div>
+        <h3>משימות ורשימות</h3>
+        <p>הוסף משימות, סדר לפי קטגוריות, וסמן כבוצע ישירות בוואטסאפ דרך סקר אינטראקטיבי.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128722;</div>
+        <h3>רשימת קניות</h3>
+        <p>"אני צריך חלב, לחם וביצים" — שומר, מציג ומסמן פריטים שנקנו. הרשימה תמיד איתך.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128172;</div>
+        <h3>שיחה טבעית</h3>
+        <p>דבר איתו כמו עם חבר — בלי פקודות מיוחדות. הוא מבין עברית טבעית ומגיב בהתאם.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#128196;</div>
+        <h3>סנכרון לוח שנה</h3>
+        <p>חבר את Google Calendar או Apple Calendar — כל אירוע שתוסיף דרך וואטסאפ יופיע בלוח שנה שלך, ולהיפך. סנכרון דו-כיווני אוטומטי.</p>
+      </div>
+      <div class="feature-card animate-in">
+        <div class="feature-icon">&#9989;</div>
+        <h3>סנכרון תזכורות</h3>
+        <p>משימות ורשימת קניות מסתנכרנים אוטומטית עם Apple Reminders או Google Tasks. סמנת כבוצע באייפון? גם אצל המזכיר זה מתעדכן.</p>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="sec how" id="how">
+<!-- How It Works -->
+<section class="how-it-works" id="howItWorks">
   <div class="container">
-    <div class="sec-tag ao">איך זה עובד</div>
-    <h2 class="sec-h ao">שלושה צעדים פשוטים</h2>
-    <p class="sec-sub ao">בלי התקנות, בלי הגדרות. פשוט שולחים הודעה.</p>
+    <div class="section-label animate-in">איך זה עובד</div>
+    <h2 class="section-title animate-in">שלושה צעדים פשוטים</h2>
     <div class="steps">
-      <div class="step ao">
-        <div class="step-n">1</div>
-        <div class="step-body">
+      <div class="step animate-in">
+        <div class="step-number">1</div>
+        <div class="step-content">
           <h3>שלח הודעה רגילה</h3>
-          <p>כתוב כמו שאתה מדבר — בעברית, בלי פורמט</p>
-          <div class="step-demo"><div class="bub s">יש לי פגישה ביום חמישי ב-14:00 עם עו"ד<div class="t"><span class="ck">&#10003;&#10003;</span> 09:41</div></div></div>
+          <p>כתוב בדיוק כמו שאתה מדבר — בעברית, בלי פורמט מיוחד</p>
+          <div class="step-chat">
+            <div class="wa-msg sent">יש לי פגישה ביום חמישי ב-14:00 עם עו"ד</div>
+          </div>
         </div>
       </div>
-      <div class="step ao d1">
-        <div class="step-n">2</div>
-        <div class="step-body">
+      <div class="step animate-in">
+        <div class="step-number">2</div>
+        <div class="step-content">
           <h3>המזכיר מבין ושומר</h3>
           <p>AI חכם מזהה את הכוונה שלך ושומר בצורה מסודרת</p>
-          <div class="step-demo"><div class="bub r">נתפס! &#9989; פגישה עם עו"ד ביום חמישי ב-14:00<div class="t">09:41</div></div></div>
+          <div class="step-chat">
+            <div class="wa-msg received">נתפס! &#9989; פגישה עם עו"ד ביום חמישי ב-14:00</div>
+          </div>
         </div>
       </div>
-      <div class="step ao d2">
-        <div class="step-n">3</div>
-        <div class="step-body">
+      <div class="step animate-in">
+        <div class="step-number">3</div>
+        <div class="step-content">
           <h3>מקבל תזכורות בזמן</h3>
-          <p>כל ערב ב-9 סיכום של מחר, ושעה לפני — אף פעם לא תשכח</p>
-          <div class="step-demo"><div class="bub r">&#127769; ערב טוב! הנה מה שמחכה לך מחר:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>לילה טוב! &#128564;<div class="t">21:00</div></div></div>
+          <p>כל ערב ב-9 סיכום של מחר, ושעה לפני כל אירוע — אף פעם לא תשכח</p>
+          <div class="step-chat">
+            <div class="wa-msg received">&#127769; ערב טוב! הנה מה שמחכה לך מחר:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>לילה טוב! &#128564;</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- SIGNUP -->
-<section class="sec" id="signup">
+<!-- CTA -->
+<section class="cta-section" id="signup">
   <div class="container">
-    <div class="cta-wrap ao">
+    <div class="cta-card animate-in">
       <h2>הצטרף לרשימת ההמתנה</h2>
-      <p class="sub">השאר פרטים ונעדכן אותך במייל כשהחשבון מוכן</p>
-      <form id="form" onsubmit="handleSignup(event)">
-        <div class="fg"><input type="text" id="nameInput" placeholder="השם שלך" required autocomplete="name"></div>
-        <div class="fg"><input type="email" id="emailInput" placeholder="כתובת מייל" required autocomplete="email" dir="ltr" style="text-align:right"></div>
-        <div class="fg ph-row">
-          <select id="countryCode">
-            <option value="972">IL +972</option><option value="1">US +1</option><option value="44">UK +44</option>
-            <option value="357">CY +357</option><option value="49">DE +49</option><option value="33">FR +33</option>
-            <option value="380">UA +380</option><option value="7">RU +7</option><option value="971">AE +971</option>
-            <option value="61">AU +61</option><option value="91">IN +91</option><option value="55">BR +55</option>
-            <option value="27">ZA +27</option><option value="52">MX +52</option><option value="34">ES +34</option>
-            <option value="39">IT +39</option><option value="31">NL +31</option><option value="46">SE +46</option>
-            <option value="41">CH +41</option><option value="32">BE +32</option>
-          </select>
-          <input type="tel" id="phoneInput" placeholder="מספר טלפון" required autocomplete="tel" dir="ltr" style="text-align:left">
+      <p class="subtitle">השאר פרטים ונעדכן אותך במייל כשהחשבון שלך מוכן</p>
+      <form id="signupForm" onsubmit="handleSignup(event)">
+        <div class="form-group">
+          <input type="text" id="nameInput" placeholder="השם שלך" required autocomplete="name">
         </div>
-        <button type="submit" class="sub-btn" id="submitBtn">
-          <span class="bt">הצטרף לרשימה</span>
-          <div class="sp"></div>
+        <div class="form-group">
+          <input type="email" id="emailInput" placeholder="כתובת מייל" required autocomplete="email" dir="ltr" style="text-align: right;">
+        </div>
+        <div class="form-group" style="display:flex;gap:0.5rem;direction:ltr;">
+          <select id="countryCode" style="width:110px;padding:0.9rem 0.5rem;background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);border-radius:12px;color:var(--text);font-size:0.9rem;font-family:inherit;">
+            <option value="972">IL +972</option>
+            <option value="1">US +1</option>
+            <option value="44">UK +44</option>
+            <option value="357">CY +357</option>
+            <option value="49">DE +49</option>
+            <option value="33">FR +33</option>
+            <option value="380">UA +380</option>
+            <option value="7">RU +7</option>
+            <option value="971">AE +971</option>
+            <option value="61">AU +61</option>
+            <option value="91">IN +91</option>
+            <option value="55">BR +55</option>
+            <option value="27">ZA +27</option>
+            <option value="52">MX +52</option>
+            <option value="34">ES +34</option>
+            <option value="39">IT +39</option>
+            <option value="31">NL +31</option>
+            <option value="46">SE +46</option>
+            <option value="41">CH +41</option>
+            <option value="32">BE +32</option>
+          </select>
+          <input type="tel" id="phoneInput" placeholder="מספר טלפון" required autocomplete="tel" dir="ltr" style="flex:1;text-align:left;">
+        </div>
+        <button type="submit" class="submit-btn ripple" id="submitBtn">
+          <span class="btn-text">הצטרף לרשימה</span>
+          <div class="spinner"></div>
         </button>
       </form>
-      <div class="f-ok" id="fOk"></div>
-      <p class="f-note">&#128274; פרטיך מאובטחים. לא תקבל ספאם.</p>
+      <div class="form-success" id="formSuccess"></div>
+      <p class="form-note">&#128274; פרטיך מאובטחים. לא תקבל ספאם.</p>
     </div>
   </div>
 </section>
 
-<!-- FOOTER -->
+<!-- Footer -->
 <footer>
   <div class="container">
-    <div class="foot-brand"><img src="/logo.png" alt><span>מזכיר</span></div>
+    <span class="logo"><img src="/logo.png" alt="מזכיר" style="height:32px;vertical-align:middle;margin-left:6px;border-radius:6px;">מזכיר</span>
     <p>נבנה על ידי יצחק לפידות</p>
   </div>
 </footer>
 
 <script>
-// Scroll animations
-const io=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('v')}),{threshold:.08,rootMargin:'0px 0px -30px'});
-document.querySelectorAll('.ao').forEach(e=>io.observe(e));
-
-// Nav scroll
-window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',scrollY>40));
-
-// Counter
-const cio=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting){const t=+x.target.dataset.to;let c=0;const s=t/45;const iv=setInterval(()=>{c+=s;if(c>=t){x.target.textContent=t.toLocaleString();clearInterval(iv)}else x.target.textContent=Math.floor(c).toLocaleString()},22);cio.unobserve(x.target)}}),{threshold:.5});
-document.querySelectorAll('.ctr').forEach(e=>cio.observe(e));
-
-// Chat animation
-const msgs=[
-  {t:'s',x:'מחר ב-10 יש לי פגישה עם רואה חשבון',d:500},
-  {t:'d',d:1100},
-  {t:'r',x:'נתפס! &#9989; פגישה עם רואה חשבון מחר ב-10 בבוקר',d:1600},
-  {t:'s',x:'תוסיף לרשימת קניות חלב, לחם וביצים',d:2800},
-  {t:'d',d:1000},
-  {t:'r',x:'&#128722; הוספתי 3 פריטים לרשימת הקניות!',d:1500},
-  {t:'s',x:'מה יש לי היום?',d:2500},
-  {t:'d',d:900},
-  {t:'r',x:'&#128197; אירועים להיום:\n\n• 14:00 - שיעור יוגה\n• 18:30 - ארוחת ערב עם המשפחה\n\nיום מעולה! &#128170;',d:1800}
-];
-function runChat(){
-  const c=document.getElementById('chat'),d=document.getElementById('dots');
-  c.querySelectorAll('.bub').forEach(m=>m.remove());d.classList.remove('on');
-  const now=new Date().toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'});
-  let dl=0;
-  msgs.forEach(m=>{
-    dl+=m.d;
-    if(m.t==='d'){setTimeout(()=>d.classList.add('on'),dl)}
-    else{setTimeout(()=>{
-      d.classList.remove('on');
-      const b=document.createElement('div');
-      b.className='bub '+m.t;
-      const ck=m.t==='s'?'<div class="t"><span class="ck">&#10003;&#10003;</span> '+now+'</div>':'<div class="t">'+now+'</div>';
-      b.innerHTML=m.x.replace(/\n/g,'<br>')+ck;
-      c.insertBefore(b,d);
-      requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.add('show')));
-      c.scrollTop=c.scrollHeight;
-    },dl)}
+  // Cursor glow
+  const glow = document.getElementById('cursorGlow');
+  document.addEventListener('mousemove', (e) => {
+    glow.style.left = e.clientX + 'px';
+    glow.style.top = e.clientY + 'px';
   });
-  setTimeout(runChat,dl+4500);
-}
-const po=new IntersectionObserver(e=>{if(e[0].isIntersecting){setTimeout(runChat,700);po.disconnect()}});
-po.observe(document.getElementById('phone'));
 
-// Form
-async function handleSignup(e){
-  e.preventDefault();
-  const btn=document.getElementById('submitBtn'),ok=document.getElementById('fOk');
-  const name=document.getElementById('nameInput').value.trim();
-  const email=document.getElementById('emailInput').value.trim();
-  const cc=document.getElementById('countryCode').value;
-  let ph=document.getElementById('phoneInput').value.trim().replace(/[\s\-()+]/g,'');
-  if(ph.startsWith('0'))ph=ph.substring(1);
-  if(ph.startsWith(cc))ph=ph.substring(cc.length);
-  ph=cc+ph;
-  if(!name||!email||!ph)return;
-  btn.classList.add('ld');btn.disabled=true;
-  try{
-    const r=await fetch('/api/admin/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,phone:ph})});
-    const d=await r.json();
-    ok.textContent=d.message||'נרשמת בהצלחה!';ok.style.display='block';
-    ok.style.borderColor='rgba(37,211,102,.2)';ok.style.color='#25d366';
-    document.getElementById('form').reset();
-  }catch{
-    ok.textContent='שגיאה בהרשמה, נסה שוב';ok.style.display='block';
-    ok.style.borderColor='rgba(220,38,38,.3)';ok.style.color='#f87171';
-  }finally{btn.classList.remove('ld');btn.disabled=false}
-}
+  // Intersection Observer for animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.animate-in').forEach((el) => observer.observe(el));
+
+  // Counter animation
+  const counterObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseInt(el.dataset.target);
+        let current = 0;
+        const increment = target / 40;
+        const timer = setInterval(() => {
+          current += increment;
+          if (current >= target) {
+            el.textContent = target;
+            clearInterval(timer);
+          } else {
+            el.textContent = Math.floor(current);
+          }
+        }, 30);
+        counterObserver.unobserve(el);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  document.querySelectorAll('.counter').forEach((el) => counterObserver.observe(el));
+
+  // Ripple effect
+  document.querySelectorAll('.ripple').forEach((btn) => {
+    btn.addEventListener('click', function (e) {
+      const ripple = document.createElement('span');
+      ripple.classList.add('ripple-effect');
+      const rect = this.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+      ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+      this.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    });
+  });
+
+  // WhatsApp chat animation
+  const chatMessages = [
+    { type: 'sent', text: 'מחר ב-10 יש לי פגישה עם רואה חשבון', delay: 500 },
+    { type: 'typing', delay: 1200 },
+    { type: 'received', text: 'נתפס! &#9989; פגישה עם רואה חשבון מחר ב-10 בבוקר', delay: 1800 },
+    { type: 'sent', text: 'תוסיף לרשימת קניות חלב, לחם וביצים', delay: 3000 },
+    { type: 'typing', delay: 1200 },
+    { type: 'received', text: '&#128722; הוספתי 3 פריטים לרשימת הקניות!', delay: 1800 },
+    { type: 'sent', text: 'מה יש לי היום?', delay: 3000 },
+    { type: 'typing', delay: 1000 },
+    { type: 'received', text: '&#128197; אירועים להיום:\n\n• 14:00 - שיעור יוגה\n• 18:30 - ארוחת ערב עם המשפחה\n\nיום מעולה! &#128170;', delay: 2000 },
+  ];
+
+  function runChatAnimation() {
+    const container = document.getElementById('heroChat');
+    const typing = document.getElementById('heroTyping');
+
+    // Clear previous messages
+    container.querySelectorAll('.wa-msg').forEach((m) => m.remove());
+    typing.classList.remove('visible');
+
+    let totalDelay = 0;
+
+    chatMessages.forEach((msg) => {
+      totalDelay += msg.delay;
+
+      if (msg.type === 'typing') {
+        setTimeout(() => { typing.classList.add('visible'); }, totalDelay);
+      } else {
+        setTimeout(() => {
+          typing.classList.remove('visible');
+          const div = document.createElement('div');
+          div.className = `wa-msg ${msg.type}`;
+          div.innerHTML = msg.text.replace(/\n/g, '<br>') + '<div class="time">&#10003;&#10003; ' + new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + '</div>';
+          container.insertBefore(div, typing);
+          requestAnimationFrame(() => div.classList.add('visible'));
+          container.scrollTop = container.scrollHeight;
+        }, totalDelay);
+      }
+    });
+
+    // Loop after all messages + pause
+    totalDelay += 4000;
+    setTimeout(runChatAnimation, totalDelay);
+  }
+
+  // Start animation when hero is visible
+  const heroObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      setTimeout(runChatAnimation, 800);
+      heroObserver.disconnect();
+    }
+  });
+  heroObserver.observe(document.getElementById('heroMockup'));
+
+  // Scroll functions
+  function scrollToSignup() {
+    document.getElementById('signup').scrollIntoView({ behavior: 'smooth' });
+  }
+  function scrollToHowItWorks() {
+    document.getElementById('howItWorks').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Form submit
+  async function handleSignup(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const success = document.getElementById('formSuccess');
+    const name = document.getElementById('nameInput').value.trim();
+    const email = document.getElementById('emailInput').value.trim();
+    const countryCode = document.getElementById('countryCode').value;
+    let phone = document.getElementById('phoneInput').value.trim().replace(/[\s\-()+]/g, '');
+    if (phone.startsWith('0')) phone = phone.substring(1);
+    // Avoid double country code (e.g. user types +972-55-... with 972 selected)
+    if (phone.startsWith(countryCode)) phone = phone.substring(countryCode.length);
+    phone = countryCode + phone;
+
+    if (!name || !email || !phone) return;
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/admin/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone }),
+      });
+      const data = await res.json();
+      success.textContent = data.message || 'נרשמת בהצלחה!';
+      success.style.display = 'block';
+      document.getElementById('signupForm').reset();
+    } catch {
+      success.textContent = 'שגיאה בהרשמה, נסה שוב';
+      success.style.display = 'block';
+      success.style.borderColor = 'rgba(220,38,38,0.3)';
+      success.style.color = '#F87171';
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
 </script>
 </body>
 </html>
