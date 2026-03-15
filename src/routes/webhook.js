@@ -198,11 +198,14 @@ async function processWebhook(body) {
       return;
     }
 
+    // Truncate very long messages to prevent token overflow
+    const safeText = text.length > 1000 ? text.substring(0, 1000) + '...' : text;
+
     // Show typing indicator while AI processes
     greenApi.sendTyping(chatId).catch(() => {});
 
     // Process with AI
-    const aiResponse = await claude.processMessage(text, history, null, user.timezone || 'Asia/Jerusalem');
+    const aiResponse = await claude.processMessage(safeText, history, null, user.timezone || 'Asia/Jerusalem');
     logger.info('webhook', 'AI response', { action: aiResponse.action, content: aiResponse.content, days: aiResponse.days, time: aiResponse.time, category: aiResponse.category });
 
     // Save user message
