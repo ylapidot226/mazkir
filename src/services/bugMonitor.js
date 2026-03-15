@@ -1,26 +1,24 @@
 const db = require('./database');
 const greenApi = require('./greenApi');
 const logger = require('../utils/logger');
-const config = require('../config');
 
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '35795167764@c.us';
-const HOURS_BACK = 6;
 
 // Track last report time to prevent duplicates
 let lastReportTime = 0;
 
 /**
- * Check if it's time to send the bug report (every 6 hours Israel time: 7am, 1pm, 7pm, 1am)
+ * Check if it's time to send the daily usage report (once a day at 22:00 Israel time)
  */
 function isBugReportTime() {
   const now = Date.now();
-  // Don't send more than once per 5 hours
-  if (now - lastReportTime < 5 * 60 * 60 * 1000) return false;
+  // Don't send more than once per 20 hours
+  if (now - lastReportTime < 20 * 60 * 60 * 1000) return false;
 
   const ilTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
   const hour = ilTime.getHours();
   const minute = ilTime.getMinutes();
-  if ([7, 13, 19, 1].includes(hour) && minute < 5) {
+  if (hour === 22 && minute < 5) {
     lastReportTime = now;
     return true;
   }
@@ -28,169 +26,94 @@ function isBugReportTime() {
 }
 
 /**
- * Analyze recent conversations and send a bug report to admin
+ * Send daily usage report to admin
  */
 async function runBugReport() {
   try {
-    const since = new Date(Date.now() - HOURS_BACK * 60 * 60 * 1000).toISOString();
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
+    // Get today's messages
     const { data: messages, error } = await db.supabase
       .from('messages')
-      .select('user_id, role, content, created_at')
-      .gte('created_at', since)
-      .order('created_at', { ascending: true });
+      .select('user_id, role, created_at')
+      .gte('created_at', since);
 
-    if (error || !messages || messages.length === 0) {
-      logger.info('bugMonitor', 'No messages to analyze');
+    if (error) {
+      logger.error('bugMonitor', 'Failed to fetch messages', error);
       return;
     }
 
-    // Decrypt messages
-    const { decrypt } = require('../utils/encryption');
-    const decrypted = messages.map((m) => ({
-      ...m,
-      content: decrypt(m.content),
-    }));
-
-    // Get user names
-    const userIds = [...new Set(decrypted.map((m) => m.user_id))];
-    const { data: users } = await db.supabase
+    // Get all users
+    const { data: allUsers } = await db.supabase
       .from('users')
-      .select('id, name, phone_number')
-      .in('id', userIds);
+      .select('id, name, phone_number, status');
 
-    const userMap = {};
-    for (const u of users || []) userMap[u.id] = u.name || u.phone_number;
+    const totalUsers = (allUsers || []).length;
+    const activeUsers = (allUsers || []).filter((u) => u.status === 'active').length;
+    const pendingUsers = (allUsers || []).filter((u) => u.status === 'pending').length;
 
-    // Group by user
-    const convos = {};
-    for (const msg of decrypted) {
-      if (!convos[msg.user_id]) convos[msg.user_id] = [];
-      convos[msg.user_id].push(msg);
-    }
-
-    const issues = [];
-
-    for (const [userId, msgs] of Object.entries(convos)) {
-      const userName = userMap[userId] || userId;
-
-      for (let i = 0; i < msgs.length; i++) {
-        const msg = msgs[i];
-        const prev = i > 0 ? msgs[i - 1] : null;
-        const next = i < msgs.length - 1 ? msgs[i + 1] : null;
-
-        // 1. User asked the same question multiple times (frustration)
-        if (msg.role === 'user') {
-          const sameQuestions = msgs.filter(
-            (m) => m.role === 'user' && m.content === msg.content && m.created_at !== msg.created_at
-          );
-          if (sameQuestions.length >= 2 && !issues.some((is) => is.content === msg.content && is.userId === userId)) {
-            issues.push({
-              type: 'repeated_question',
-              userId,
-              userName,
-              content: msg.content,
-              count: sameQuestions.length + 1,
-              desc: `שאל "${msg.content}" ${sameQuestions.length + 1} פעמים`,
-            });
-          }
-        }
-
-        // 2. Bot responded with question marks or confusion
-        if (msg.role === 'assistant' && msg.content) {
-          if (msg.content.includes('לא ברור') || msg.content.includes('לא הבנתי') || msg.content.includes('לא מצאתי')) {
-            issues.push({
-              type: 'bot_confused',
-              userId,
-              userName,
-              content: prev?.content || '',
-              botResponse: msg.content.substring(0, 100),
-              desc: `הבוט לא הבין: "${prev?.content || '?'}"`,
-            });
-          }
-        }
-
-        // 3. User expressed frustration
-        if (msg.role === 'user' && msg.content) {
-          const frustrated = ['אתה לא יודע', 'לא עובד', 'באג', 'שגיאה', 'לא הבנת', 'לא זה', 'טעות', 'ומה גילית', 'תשתף אותי', 'מה בדקת'];
-          if (frustrated.some((f) => msg.content.includes(f))) {
-            issues.push({
-              type: 'user_frustrated',
-              userId,
-              userName,
-              content: msg.content,
-              desc: `${userName} מתוסכל: "${msg.content}"`,
-            });
-          }
-        }
-
-        // 4. Bot gave empty or very short response
-        if (msg.role === 'assistant' && msg.content && msg.content.length < 10 && !['בכיף! 😊', 'בוצע! ✅'].includes(msg.content)) {
-          issues.push({
-            type: 'short_response',
-            userId,
-            userName,
-            content: msg.content,
-            userMsg: prev?.content || '',
-            desc: `תשובה קצרה מדי: "${msg.content}" לשאלה "${prev?.content || '?'}"`,
-          });
-        }
-
-        // 5. Same bot response sent multiple times in a row
-        if (msg.role === 'assistant' && next && next.role === 'user') {
-          const nextBot = msgs[i + 2];
-          if (nextBot && nextBot.role === 'assistant' && nextBot.content === msg.content) {
-            if (!issues.some((is) => is.type === 'duplicate_response' && is.content === msg.content && is.userId === userId)) {
-              issues.push({
-                type: 'duplicate_response',
-                userId,
-                userName,
-                content: msg.content?.substring(0, 80),
-                desc: `תשובה זהה חוזרת: "${msg.content?.substring(0, 50)}..."`,
-              });
-            }
-          }
-        }
+    // Count messages per user
+    const userMessages = {};
+    for (const msg of (messages || [])) {
+      if (msg.role === 'user') {
+        userMessages[msg.user_id] = (userMessages[msg.user_id] || 0) + 1;
       }
     }
+
+    const activeToday = Object.keys(userMessages).length;
+    const totalMessages = (messages || []).filter((m) => m.role === 'user').length;
+    const botMessages = (messages || []).filter((m) => m.role === 'assistant').length;
+
+    // Build user names map
+    const userMap = {};
+    for (const u of (allUsers || [])) userMap[u.id] = u.name || u.phone_number;
+
+    // Top users by messages
+    const sortedUsers = Object.entries(userMessages)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    // Get new registrations today
+    const { data: newUsers } = await db.supabase
+      .from('users')
+      .select('name, status')
+      .gte('created_at', since);
 
     // Build report
-    const totalUsers = Object.keys(convos).length;
-    const totalMessages = decrypted.length;
+    const ilDate = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'long', year: 'numeric' });
 
-    // Deduplicate issues
-    const uniqueIssues = [];
-    const seen = new Set();
-    for (const issue of issues) {
-      const key = `${issue.type}:${issue.userId}:${issue.content?.substring(0, 30)}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueIssues.push(issue);
+    let report = `📊 דוח שימוש יומי - ${ilDate}\n\n`;
+    report += `👥 סה"כ משתמשים: ${totalUsers}\n`;
+    report += `✅ פעילים: ${activeUsers}\n`;
+    report += `⏳ ממתינים: ${pendingUsers}\n\n`;
+    report += `📱 פעילים היום: ${activeToday}\n`;
+    report += `💬 הודעות משתמשים: ${totalMessages}\n`;
+    report += `🤖 תגובות בוט: ${botMessages}\n`;
+
+    if ((newUsers || []).length > 0) {
+      report += `\n🆕 נרשמו היום: ${newUsers.length}\n`;
+      for (const u of newUsers) {
+        report += `  • ${u.name} (${u.status === 'active' ? 'אושר' : 'ממתין'})\n`;
       }
     }
 
-    let report = `📊 דוח ניטור (${HOURS_BACK} שעות אחרונות)\n`;
-    report += `👥 ${totalUsers} משתמשים | 💬 ${totalMessages} הודעות\n`;
-
-    if (uniqueIssues.length === 0) {
-      report += `\n✅ לא נמצאו בעיות!`;
-    } else {
-      report += `\n⚠️ ${uniqueIssues.length} בעיות:\n`;
-
-      for (const issue of uniqueIssues.slice(0, 10)) {
-        report += `\n• ${issue.desc}`;
+    if (sortedUsers.length > 0) {
+      report += `\n🏆 משתמשים פעילים היום:\n`;
+      for (const [userId, count] of sortedUsers) {
+        const name = userMap[userId] || userId;
+        report += `  • ${name}: ${count} הודעות\n`;
       }
+    }
 
-      if (uniqueIssues.length > 10) {
-        report += `\n\n...ועוד ${uniqueIssues.length - 10} בעיות`;
-      }
+    if (activeToday === 0) {
+      report += `\n😴 אין פעילות היום`;
     }
 
     // Send to admin
     await greenApi.sendMessage(ADMIN_PHONE, report);
-    logger.info('bugMonitor', 'Bug report sent', { issues: uniqueIssues.length, messages: totalMessages });
+    logger.info('bugMonitor', 'Daily usage report sent', { activeToday, totalMessages });
   } catch (error) {
-    logger.error('bugMonitor', 'Bug report failed', { error: error.message });
+    logger.error('bugMonitor', 'Usage report failed', { error: error.message });
   }
 }
 
