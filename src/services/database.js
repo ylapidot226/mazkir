@@ -686,27 +686,43 @@ async function recurringEventExistsToday(userId, title, datetime) {
   return data && data.length > 0;
 }
 
-// ---- Poll Mappings (in-memory, polls expire after 24h) ----
+// ---- Poll Mappings (stored in Supabase for serverless) ----
 
-const pollMappings = new Map();
-
-function savePollMapping(userId, pollMessageId, tasks) {
-  const key = `${userId}:${pollMessageId}`;
-  pollMappings.set(key, {
-    tasks: tasks.map((t) => ({ id: t.id, content: t.content, type: t.type, external_id: t.external_id })),
-    createdAt: Date.now(),
-  });
+async function savePollMapping(userId, pollMessageId, tasks) {
   // Clean up old mappings (older than 24h)
-  for (const [k, v] of pollMappings) {
-    if (Date.now() - v.createdAt > 24 * 60 * 60 * 1000) {
-      pollMappings.delete(k);
-    }
+  await supabase
+    .from('poll_mappings')
+    .delete()
+    .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+  const { error } = await supabase
+    .from('poll_mappings')
+    .insert({
+      user_id: userId,
+      poll_message_id: pollMessageId,
+      tasks: JSON.stringify(tasks.map((t) => ({ id: t.id, content: t.content, type: t.type, external_id: t.external_id }))),
+    });
+
+  if (error) {
+    logger.error('database', 'Failed to save poll mapping', error);
   }
 }
 
-function getPollMapping(userId, pollMessageId) {
-  const key = `${userId}:${pollMessageId}`;
-  return pollMappings.get(key) || null;
+async function getPollMapping(userId, pollMessageId) {
+  const { data, error } = await supabase
+    .from('poll_mappings')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('poll_message_id', pollMessageId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    logger.error('database', 'Failed to get poll mapping', error);
+  }
+  if (data) {
+    return { tasks: JSON.parse(data.tasks) };
+  }
+  return null;
 }
 
 // ---- Messages (conversation history) ----

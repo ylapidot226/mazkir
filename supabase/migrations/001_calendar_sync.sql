@@ -38,3 +38,14 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS external_id TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS source TEXT;
 ALTER TABLE shopping_list ADD COLUMN IF NOT EXISTS external_id TEXT;
 ALTER TABLE shopping_list ADD COLUMN IF NOT EXISTS source TEXT;
+
+-- 6. Poll mappings table (for serverless poll vote handling)
+CREATE TABLE IF NOT EXISTS poll_mappings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  poll_message_id TEXT NOT NULL,
+  tasks TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_poll_mappings_lookup ON poll_mappings(user_id, poll_message_id);
