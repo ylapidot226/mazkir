@@ -312,9 +312,8 @@ async function executeAction(userId, chatId, aiResponse) {
         let startDate = aiResponse.start_date || null;
         const endDate = aiResponse.end_date || null;
 
-        // For "today" queries, use current time instead of start of day
-        // so we don't show events that already passed
-        if (range === 'today' && startDate) {
+        // Use current time as start to avoid showing events that already passed
+        if (startDate) {
           const now = new Date();
           const queryStart = new Date(startDate);
           if (now > queryStart) {
@@ -330,7 +329,7 @@ async function executeAction(userId, chatId, aiResponse) {
         if (events.length > 0) {
           const formatted = events.map((e) => {
             const f = formatDateHe(e.datetime);
-            const loc = e.location ? ` 📍 ${e.location}` : '';
+            const loc = e.location && e.location !== 'Asia/Jerusalem' ? ` 📍 ${e.location}` : '';
             return `• ${e.title} - ${f.full}${loc}`;
           }).join('\n');
           const labels = { today: 'אירועים להיום', tomorrow: 'אירועים למחר', week: 'אירועים לשבוע הקרוב', specific_day: 'אירועים', all: 'אירועים קרובים' };

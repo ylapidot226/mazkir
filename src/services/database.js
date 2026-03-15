@@ -233,14 +233,15 @@ async function deleteEventByContent(userId, content) {
     .from('events')
     .select('*')
     .eq('user_id', userId)
-    .ilike('title', `%${content}%`);
+    .ilike('title', `%${content}%`)
+    .order('datetime', { ascending: true });
 
   if (data && data.length > 0) {
-    for (const event of data) {
-      await supabase.from('events').delete().eq('id', event.id);
-    }
-    logger.info('database', 'Events deleted', { userId, count: data.length });
-    return data.length;
+    // Only delete the closest upcoming event, not all matches
+    const event = data[0];
+    await supabase.from('events').delete().eq('id', event.id);
+    logger.info('database', 'Event deleted', { userId, eventId: event.id, title: event.title });
+    return 1;
   }
   return 0;
 }
