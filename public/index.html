@@ -1295,6 +1295,46 @@
       text-align: center;
       font-weight: 500;
     }
+    .success-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      animation: fadeIn 0.3s ease;
+    }
+    .success-popup {
+      background: #fff;
+      border-radius: 24px;
+      padding: 2.5rem 2rem;
+      max-width: 380px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .success-popup .icon { font-size: 4rem; margin-bottom: 1rem; }
+    .success-popup h2 { font-size: 1.5rem; font-weight: 800; color: #111b21; margin-bottom: 0.5rem; }
+    .success-popup p { font-size: 0.95rem; color: #667781; line-height: 1.7; margin-bottom: 1.5rem; }
+    .success-popup .close-btn {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 100px;
+      padding: 0.8rem 2.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Heebo', sans-serif;
+      transition: all 0.3s;
+    }
+    .success-popup .close-btn:hover { background: var(--green-dark); transform: translateY(-2px); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes popIn { from { opacity: 0; transform: scale(0.8) translateY(20px); } to { opacity: 1; transform: none; } }
     .form-fine {
       color: var(--text-dim);
       font-size: 0.68rem;
@@ -1912,11 +1952,20 @@
         body: JSON.stringify({ name, email, phone }),
       });
       const data = await res.json();
-      msgEl.textContent = data.message || 'נרשמת בהצלחה!';
-      msgEl.style.display = 'block';
-      msgEl.style.borderColor = 'rgba(37,211,102,0.2)';
-      msgEl.style.color = '#25D366';
       document.getElementById('signupForm').reset();
+      // Show success popup
+      const overlay = document.createElement('div');
+      overlay.className = 'success-overlay';
+      overlay.innerHTML = `
+        <div class="success-popup">
+          <div class="icon">🎉</div>
+          <h2>נרשמת בהצלחה!</h2>
+          <p>${data.message || 'נכנסת לרשימת ההמתנה ונעדכן אותך במייל כשהחשבון יאושר'}</p>
+          <button class="close-btn" onclick="this.closest('.success-overlay').remove()">מעולה!</button>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
     } catch {
       msgEl.textContent = 'שגיאה בהרשמה, נסה שוב';
       msgEl.style.display = 'block';
