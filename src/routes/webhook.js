@@ -309,8 +309,19 @@ async function executeAction(userId, chatId, aiResponse) {
 
       case 'query_events': {
         const range = aiResponse.range || 'all';
-        const startDate = aiResponse.start_date || null;
+        let startDate = aiResponse.start_date || null;
         const endDate = aiResponse.end_date || null;
+
+        // For "today" queries, use current time instead of start of day
+        // so we don't show events that already passed
+        if (range === 'today' && startDate) {
+          const now = new Date();
+          const queryStart = new Date(startDate);
+          if (now > queryStart) {
+            startDate = now.toISOString();
+          }
+        }
+
         const events = await db.getUpcomingEventsByDateRange(userId, startDate, endDate);
         const recurring = await db.getUserRecurringEvents(userId);
 
