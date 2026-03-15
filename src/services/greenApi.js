@@ -52,6 +52,13 @@ function parseWebhook(body) {
     text = messageData.textMessageData?.textMessage;
   } else if (messageData?.typeMessage === 'extendedTextMessage') {
     text = messageData.extendedTextMessageData?.text;
+  } else if (messageData?.typeMessage === 'quotedMessage') {
+    // Reply to a specific message - extract text and include quoted context
+    text = messageData.extendedTextMessageData?.text;
+    const quotedText = messageData.quotedMessage?.textMessage;
+    if (text && quotedText) {
+      text = `[בתגובה ל: "${quotedText}"]\n${text}`;
+    }
   } else if (messageData?.typeMessage === 'pollUpdateMessage') {
     // Poll vote received
     const pollData = messageData.pollMessageData;
