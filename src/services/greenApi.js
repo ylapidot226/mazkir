@@ -6,6 +6,17 @@ const API_BASE = config.greenApi.baseUrl;
 const TOKEN = config.greenApi.token;
 
 /**
+ * Show "typing..." indicator in the chat
+ */
+async function sendTyping(chatId) {
+  try {
+    await axios.post(`${API_BASE}/sendTyping/${TOKEN}`, { chatId });
+  } catch (error) {
+    // Ignore typing errors - non-critical
+  }
+}
+
+/**
  * Send a WhatsApp text message via Green API
  */
 async function sendMessage(chatId, text) {
@@ -74,6 +85,18 @@ function parseWebhook(body) {
   }
 
   if (!text) {
+    // Check if it's a media message type we should respond to
+    const mediaTypes = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'stickerMessage', 'contactMessage', 'locationMessage'];
+    if (mediaTypes.includes(messageData?.typeMessage)) {
+      return {
+        sender,
+        chatId,
+        senderName,
+        text: null,
+        isUnsupportedMedia: true,
+        mediaType: messageData.typeMessage,
+      };
+    }
     logger.info('greenApi', 'Skipping non-text message', { chatId, type: messageData?.typeMessage });
     return null;
   }
@@ -108,6 +131,7 @@ async function sendPoll(chatId, question, options, multipleAnswers = true) {
 
 module.exports = {
   sendMessage,
+  sendTyping,
   sendPoll,
   parseWebhook,
 };

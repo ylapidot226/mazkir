@@ -126,7 +126,7 @@ async function processWebhook(body) {
   const parsed = greenApi.parseWebhook(body);
   if (!parsed) return;
 
-  const { sender, chatId, senderName, text, isPollUpdate, pollStanzaId, pollVotes } = parsed;
+  const { sender, chatId, senderName, text, isPollUpdate, pollStanzaId, pollVotes, isUnsupportedMedia, mediaType } = parsed;
 
   // Handle poll vote updates (task completion via poll)
   if (isPollUpdate) {
@@ -134,6 +134,25 @@ async function processWebhook(body) {
     const user = await db.getUser(sender);
     if (user) {
       await handlePollVote(user.id, chatId, pollStanzaId, pollVotes);
+    }
+    return;
+  }
+
+  // Handle unsupported media messages
+  if (isUnsupportedMedia) {
+    const user = await db.getUser(sender);
+    if (user && user.status === 'active') {
+      const mediaLabels = {
+        imageMessage: 'תמונות',
+        videoMessage: 'סרטונים',
+        audioMessage: 'הודעות קוליות',
+        documentMessage: 'מסמכים',
+        stickerMessage: 'מדבקות',
+        contactMessage: 'אנשי קשר',
+        locationMessage: 'מיקומים',
+      };
+      const label = mediaLabels[mediaType] || 'קבצים';
+      await greenApi.sendMessage(chatId, `אני עדיין לא יודע לקרוא ${label} 🙈\nבינתיים אפשר לכתוב לי בטקסט ואשמח לעזור!`);
     }
     return;
   }
@@ -178,6 +197,9 @@ async function processWebhook(body) {
       await db.saveMessage(user.id, 'assistant', '[הודעת ברוכים הבאים]');
       return;
     }
+
+    // Show typing indicator while AI processes
+    greenApi.sendTyping(chatId).catch(() => {});
 
     // Process with AI
     const aiResponse = await claude.processMessage(text, history, null, user.timezone || 'Asia/Jerusalem');
