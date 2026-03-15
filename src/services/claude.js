@@ -154,7 +154,9 @@ const SYSTEM_PROMPT = `אתה "מזכיר" - מזכיר אישי אמיתי. א�
  * Process a user message through OpenAI and get structured response
  */
 async function processMessage(userMessage, conversationHistory = [], currentDate = null) {
-  const now = currentDate || new Date().toLocaleString('en-US', {
+  // Compute Israel time
+  const d = new Date();
+  const now = currentDate || d.toLocaleString('en-US', {
     timeZone: 'Asia/Jerusalem',
     year: 'numeric',
     month: '2-digit',
@@ -164,20 +166,33 @@ async function processMessage(userMessage, conversationHistory = [], currentDate
     hour12: false,
   });
 
-  const dayOfWeek = new Date().toLocaleString('he-IL', {
+  const dayOfWeek = d.toLocaleString('he-IL', {
     timeZone: 'Asia/Jerusalem',
     weekday: 'long',
   });
 
   // Compute the correct Israel timezone offset (handles DST automatically)
   const israelOffset = (() => {
-    const d = new Date();
     const utc = d.toLocaleString('en-US', { timeZone: 'UTC', hour12: false });
     const il = d.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem', hour12: false });
     const diffMs = new Date(il) - new Date(utc);
     const diffHours = Math.round(diffMs / 3600000);
     return `+${String(diffHours).padStart(2, '0')}:00`;
   })();
+
+  // Build a mini-calendar so the AI doesn't need to calculate dates
+  const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  const ilNow = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const calendarLines = [];
+  for (let i = 0; i < 14; i++) {
+    const day = new Date(ilNow);
+    day.setDate(ilNow.getDate() + i);
+    const dayName = DAYS_HE[day.getDay()];
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    const label = i === 0 ? ' (היום)' : i === 1 ? ' (מחר)' : '';
+    calendarLines.push(`יום ${dayName} = ${dateStr}${label}`);
+  }
+  const calendarRef = calendarLines.join('\n');
 
   const prompt = SYSTEM_PROMPT.replace('OFFSET_PLACEHOLDER', `${israelOffset} (תמיד תשתמש ב-${israelOffset} לכל התאריכים)`);
 
@@ -189,7 +204,7 @@ async function processMessage(userMessage, conversationHistory = [], currentDate
     })),
     {
       role: 'user',
-      content: `[${now}, ${dayOfWeek}]\n\n${userMessage}`,
+      content: `[${now}, ${dayOfWeek}]\n\nלוח תאריכים (השתמש בזה!):\n${calendarRef}\n\n${userMessage}`,
     },
   ];
 
