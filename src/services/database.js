@@ -535,6 +535,18 @@ async function markShoppingDone(userId, item) {
   return null;
 }
 
+async function markShoppingDoneById(userId, itemId) {
+  const { error } = await supabase
+    .from('shopping_list')
+    .update({ done: true })
+    .eq('id', itemId)
+    .eq('user_id', userId);
+
+  if (error) {
+    logger.error('database', 'Failed to mark shopping done by ID', error);
+  }
+}
+
 async function clearShoppingList(userId) {
   const { error } = await supabase
     .from('shopping_list')
@@ -1031,6 +1043,7 @@ module.exports = {
   addShoppingItem,
   getShoppingList,
   markShoppingDone,
+  markShoppingDoneById,
   clearShoppingList,
   addReminder,
   getDueReminders,

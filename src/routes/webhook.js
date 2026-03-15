@@ -228,18 +228,23 @@ async function handlePollVote(userId, chatId, pollStanzaId, votes) {
     if (votedOptions.length === 0) return;
 
     let completedCount = 0;
-    for (const taskContent of votedOptions) {
-      const task = mapping.tasks.find((t) => t.content === taskContent);
-      if (task) {
-        await db.completeTask(userId, task.id);
+    for (const itemContent of votedOptions) {
+      const item = mapping.tasks.find((t) => t.content === itemContent);
+      if (item) {
+        if (item.type === 'shopping') {
+          await db.markShoppingDoneById(userId, item.id);
+        } else {
+          await db.completeTask(userId, item.id);
+        }
         completedCount++;
       }
     }
 
     if (completedCount > 0) {
-      const msg = completedCount === 1
-        ? '✅ משימה אחת סומנה כבוצעה!'
-        : `✅ ${completedCount} משימות סומנו כבוצעות!`;
+      const isShopping = mapping.tasks[0]?.type === 'shopping';
+      const msg = isShopping
+        ? completedCount === 1 ? '✅ פריט אחד סומן כנקנה!' : `✅ ${completedCount} פריטים סומנו כנקנו!`
+        : completedCount === 1 ? '✅ משימה אחת סומנה כבוצעה!' : `✅ ${completedCount} משימות סומנו כבוצעות!`;
       await greenApi.sendMessage(chatId, msg);
     }
   } catch (error) {
@@ -419,11 +424,18 @@ async function executeAction(userId, chatId, aiResponse) {
         let msg;
         if (list.length === 0) {
           msg = 'רשימת הקניות ריקה! 🛒';
+          await greenApi.sendMessage(chatId, msg);
         } else {
-          const formatted = list.map((s) => `• ${s.item}`).join('\n');
-          msg = `🛒 רשימת הקניות:\n\n${formatted}`;
+          const options = list.slice(0, 12).map((s) => s.item);
+          const question = '🛒 רשימת הקניות (סמן מה קנית):';
+          const pollResult = await greenApi.sendPoll(chatId, question, options);
+          if (pollResult?.idMessage) {
+            await db.savePollMapping(userId, pollResult.idMessage,
+              list.slice(0, 12).map((s) => ({ id: s.id, content: s.item, type: 'shopping' }))
+            );
+          }
+          msg = question;
         }
-        await greenApi.sendMessage(chatId, msg);
         return msg;
       }
 
