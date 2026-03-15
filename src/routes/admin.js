@@ -223,6 +223,10 @@ router.post('/register', registerLimiter, async (req, res) => {
     await db.createUser(normalizedPhone, sanitizedName, email);
     auditLog('New registration', req, { phone: normalizedPhone });
 
+    // Notify admin via WhatsApp
+    const ADMIN_PHONE = process.env.ADMIN_PHONE || '35795167764@c.us';
+    greenApi.sendMessage(ADMIN_PHONE, `🆕 נרשם משתמש חדש!\n\n👤 ${sanitizedName}\n📱 ${normalizedPhone.replace('@c.us', '')}\n📧 ${email}\n\nממתין לאישור בפאנל הניהול.`).catch(() => {});
+
     res.json({ success: true, message: 'נרשמת בהצלחה! נכנסת לרשימת ההמתנה ונעדכן אותך במייל כשהחשבון יאושר 🙌' });
   } catch (error) {
     logger.error('admin', 'Failed to register', { message: error.message });
