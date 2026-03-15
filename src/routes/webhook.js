@@ -403,6 +403,10 @@ async function executeAction(userId, chatId, aiResponse) {
           const catMsg = category ? ` בקטגוריה "${category}"` : '';
           msg = `אין משימות פתוחות${catMsg} ✅`;
           await greenApi.sendMessage(chatId, msg);
+        } else if (tasks.length === 1) {
+          // Polls need at least 2 options
+          msg = `📋 ${category ? `משימות - ${category}` : 'המשימות שלך'}:\n\n• ${tasks[0].content}\n\nכדי לסמן כבוצע כתוב: "ביצעתי ${tasks[0].content}"`;
+          await greenApi.sendMessage(chatId, msg);
         } else {
           const options = tasks.slice(0, 12).map((t) => t.content);
           const question = category
@@ -454,6 +458,10 @@ async function executeAction(userId, chatId, aiResponse) {
         let msg;
         if (list.length === 0) {
           msg = 'רשימת הקניות ריקה! 🛒';
+          await greenApi.sendMessage(chatId, msg);
+        } else if (list.length === 1) {
+          // Polls need at least 2 options, show as text for single item
+          msg = `🛒 רשימת הקניות:\n\n• ${list[0].item}\n\nכדי לסמן כנקנה כתוב: "קניתי ${list[0].item}"`;
           await greenApi.sendMessage(chatId, msg);
         } else {
           const options = list.slice(0, 12).map((s) => s.item);
