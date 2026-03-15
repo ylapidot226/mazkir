@@ -250,7 +250,7 @@ async function handlePollVote(userId, chatId, pollStanzaId, votes) {
         }
         // Complete in connected providers if synced
         if (item.external_id) {
-          completeTaskInAll(userId, item.external_id).catch(() => {});
+          completeTaskInAll(userId, item.external_id, item.source).catch(() => {});
         }
         completedCount++;
       }
@@ -284,7 +284,10 @@ async function executeAction(userId, chatId, aiResponse) {
             if (ev) pushEventToCalendars(userId, ev.id).catch(() => {});
           }
         } else {
-          if (!isValidDatetime(datetime)) break; // (#10)
+          if (!isValidDatetime(datetime)) {
+            response = 'לא הצלחתי לזהות תאריך ושעה תקינים. נסה שוב עם פרטים מדויקים יותר 🤔';
+            break;
+          }
           const ev = await db.addEvent(userId, content, datetime, location);
           if (ev) pushEventToCalendars(userId, ev.id).catch(() => {});
         }
@@ -492,17 +495,13 @@ async function executeAction(userId, chatId, aiResponse) {
 
       case 'delete_event': {
         const safeContent = sanitizeForLike(content); // (#6)
-        // Get events before deletion to sync with Google
-        const eventsToDelete = await db.getEventsMatchingContent(userId, safeContent);
-        const count = await db.deleteEventByContent(userId, safeContent);
-        if (count > 0) {
-          for (const evt of eventsToDelete) {
-            if (evt.external_id) deleteEventFromCalendars(userId, evt.external_id, evt.source).catch(() => {});
-          }
-        }
+        const deletedEvent = await db.deleteEventByContent(userId, safeContent);
         let msg;
-        if (count > 0) {
-          msg = `🗑️ ${count === 1 ? 'האירוע נמחק' : `${count} אירועים נמחקו`} בהצלחה!`;
+        if (deletedEvent) {
+          if (deletedEvent.external_id) {
+            deleteEventFromCalendars(userId, deletedEvent.external_id, deletedEvent.source).catch(() => {});
+          }
+          msg = '🗑️ האירוע נמחק בהצלחה!';
         } else {
           msg = 'לא מצאתי אירוע מתאים למחיקה 🤔';
         }
@@ -543,6 +542,7 @@ async function executeAction(userId, chatId, aiResponse) {
           await db.addRecurringEvent(userId, recurTitle, days, time, location);
         } else {
           logger.warn('webhook', 'add_recurring missing fields', { content: recurTitle, days, time });
+          response = 'לא הצלחתי להבין את הפרטים של האירוע החוזר. נסה שוב 🤔';
         }
         break;
       }
@@ -593,6 +593,8 @@ async function executeAction(userId, chatId, aiResponse) {
       case 'add_reminder':
         if (isValidDatetime(datetime)) { // (#10)
           await db.addReminder(userId, content, datetime);
+        } else {
+          response = 'לא הצלחתי לזהות תאריך ושעה לתזכורת. נסה שוב 🤔';
         }
         break;
 
@@ -600,7 +602,7 @@ async function executeAction(userId, chatId, aiResponse) {
         const provider = content?.toLowerCase() || '';
         const token = await generateConnectToken(userId);
         const p = provider === 'google' ? 'g' : provider === 'apple' ? 'a' : 'x';
-        const shortUrl = `maztary.com/c/${token}/${p}`;
+        const shortUrl = `https://maztary.com/c/${token}/${p}`;
         const label = provider === 'apple' ? '🍎 Apple Calendar' : '📗 Google Calendar';
         await greenApi.sendMessage(chatId, `לחץ על הלינק לחיבור ${label}:`);
         await greenApi.sendMessage(chatId, shortUrl);

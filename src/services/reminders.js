@@ -106,6 +106,14 @@ async function sendDailySummary() {
     if (!isDailySummaryTime()) return;
 
     const tomorrowEvents = await db.getTomorrowEventsAllUsers();
+    const recurringEvents = await db.getActiveRecurringEvents();
+
+    // Determine tomorrow's day number
+    const now = new Date();
+    const ilTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+    const tomorrowDate = new Date(ilTime);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowDayNum = tomorrowDate.getDay();
 
     // Group events by user
     const eventsByUser = {};
@@ -116,14 +124,39 @@ async function sendDailySummary() {
       eventsByUser[phone].push(event);
     }
 
+    // Add recurring events for tomorrow
+    for (const recurring of recurringEvents) {
+      const days = recurring.days.split(',').map((d) => {
+        const trimmed = d.trim().toLowerCase();
+        return DAY_NAME_TO_NUM[trimmed] ?? parseInt(trimmed, 10);
+      }).filter((d) => !isNaN(d));
+
+      if (!days.includes(tomorrowDayNum)) continue;
+
+      const phone = recurring.users?.phone_number;
+      if (!phone) continue;
+      if (!eventsByUser[phone]) eventsByUser[phone] = [];
+
+      // Check if this recurring event isn't already in the list (as a generated event)
+      const alreadyExists = eventsByUser[phone].some((e) => e.title === recurring.title);
+      if (alreadyExists) continue;
+
+      eventsByUser[phone].push({
+        title: recurring.title,
+        datetime: null,
+        time_display: recurring.time,
+        location: recurring.location,
+      });
+    }
+
     for (const [phone, events] of Object.entries(eventsByUser)) {
       // Check if we already sent this summary
       const alreadySent = events.some((e) => e.day_summary_sent);
       if (alreadySent) continue;
 
       const eventLines = events.map((e) => {
-        const time = formatTime(e.datetime);
-        const loc = e.location ? ` 📍 ${e.location}` : '';
+        const time = e.time_display || formatTime(e.datetime);
+        const loc = e.location && e.location !== 'Asia/Jerusalem' ? ` 📍 ${e.location}` : '';
         return `• ${time} - ${e.title}${loc}`;
       }).join('\n');
 

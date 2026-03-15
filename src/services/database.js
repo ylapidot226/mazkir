@@ -241,9 +241,9 @@ async function deleteEventByContent(userId, content) {
     const event = data[0];
     await supabase.from('events').delete().eq('id', event.id);
     logger.info('database', 'Event deleted', { userId, eventId: event.id, title: event.title });
-    return 1;
+    return event; // Return the actual deleted event for calendar sync
   }
-  return 0;
+  return null;
 }
 
 async function deleteAllEvents(userId) {
@@ -335,7 +335,7 @@ async function getEventsForHourlyReminder() {
 
   const { data, error } = await supabase
     .from('events')
-    .select('*, users(phone_number)')
+    .select('*, users(phone_number, status)')
     .eq('reminder_sent', false)
     .gte('datetime', in55min.toISOString())
     .lte('datetime', in65min.toISOString());
@@ -345,7 +345,7 @@ async function getEventsForHourlyReminder() {
     return [];
   }
 
-  return data || [];
+  return (data || []).filter((e) => e.users?.status === 'active');
 }
 
 /**
@@ -584,7 +584,7 @@ async function getDueReminders() {
 
   const { data, error } = await supabase
     .from('reminders')
-    .select('*, users(phone_number)')
+    .select('*, users(phone_number, status)')
     .eq('sent', false)
     .lte('remind_at', in1min.toISOString());
 
@@ -592,7 +592,7 @@ async function getDueReminders() {
     logger.error('database', 'Failed to get due reminders', error);
     return [];
   }
-  return data || [];
+  return (data || []).filter((r) => r.users?.status === 'active');
 }
 
 async function markReminderDone(reminderId) {
@@ -701,7 +701,7 @@ async function savePollMapping(userId, pollMessageId, tasks) {
     .insert({
       user_id: userId,
       poll_message_id: pollMessageId,
-      tasks: JSON.stringify(tasks.map((t) => ({ id: t.id, content: t.content, type: t.type, external_id: t.external_id }))),
+      tasks: JSON.stringify(tasks.map((t) => ({ id: t.id, content: t.content, type: t.type, external_id: t.external_id, source: t.source }))),
     });
 
   if (error) {

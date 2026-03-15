@@ -209,7 +209,15 @@ async function deleteEventFromGoogle(userId, externalId) {
     const tokens = JSON.parse(connection.credentials);
     const calId = connection.calendar_id || 'primary';
 
-    await googleCalendar.deleteEvent(tokens, externalId, calId);
+    let currentTokens = tokens;
+    try {
+      currentTokens = await googleCalendar.refreshTokensIfNeeded(tokens);
+      if (currentTokens.access_token !== tokens.access_token) {
+        await db.updateCalendarCredentials(connection.id, JSON.stringify(currentTokens));
+      }
+    } catch (e) { return; }
+
+    await googleCalendar.deleteEvent(currentTokens, externalId, calId);
     logger.info('calendarSync', 'Event deleted from Google', { userId, externalId });
   } catch (error) {
     logger.error('calendarSync', 'Failed to delete from Google', { userId, error: error.message });
@@ -492,7 +500,14 @@ async function completeTaskInGoogle(userId, externalId) {
     if (!connection || !externalId) return;
 
     const tokens = JSON.parse(connection.credentials);
-    await googleCalendar.completeTask(tokens, externalId);
+    let currentTokens = tokens;
+    try {
+      currentTokens = await googleCalendar.refreshTokensIfNeeded(tokens);
+      if (currentTokens.access_token !== tokens.access_token) {
+        await db.updateCalendarCredentials(connection.id, JSON.stringify(currentTokens));
+      }
+    } catch (e) { return; }
+    await googleCalendar.completeTask(currentTokens, externalId);
   } catch (error) {
     logger.error('calendarSync', 'Failed to complete Google Task', { userId, error: error.message });
   }
@@ -511,11 +526,18 @@ async function pushTaskToAll(userId, taskId) {
 /**
  * Complete task in all connected providers
  */
-async function completeTaskInAll(userId, externalId) {
-  await Promise.all([
-    completeReminderInApple(userId, externalId),
-    completeTaskInGoogle(userId, externalId),
-  ]);
+async function completeTaskInAll(userId, externalId, source) {
+  if (source === 'apple') {
+    await completeReminderInApple(userId, externalId);
+  } else if (source === 'google') {
+    await completeTaskInGoogle(userId, externalId);
+  } else {
+    // Unknown source, try both (legacy)
+    await Promise.all([
+      completeReminderInApple(userId, externalId),
+      completeTaskInGoogle(userId, externalId),
+    ]);
+  }
 }
 
 module.exports = {
