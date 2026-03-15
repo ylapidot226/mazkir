@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>תנאי שימוש - מזכיר</title>
+  <meta name="description" content="תנאי השימוש של מזכיר - העוזר החכם שלך בוואטסאפ">
+  <link rel="icon" type="image/png" href="/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #ECE5DD;
+      --green: #25D366;
+      --green-dark: #075e54;
+      --teal: #075e54;
+      --text: #111b21;
+      --text-secondary: #3b4a54;
+      --text-muted: #667781;
+      --surface: rgba(255, 255, 255, 0.85);
+      --border: rgba(0, 0, 0, 0.08);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      direction: rtl;
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .top-bar {
+      background: var(--teal);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .top-bar-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .top-bar a.logo-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #fff;
+    }
+
+    .top-bar img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+
+    .top-bar h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .top-bar .back-link {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .top-bar .back-link:hover {
+      color: #fff;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    .page-title {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--teal);
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      transition: box-shadow 0.2s;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h2 .num {
+      background: var(--green);
+      color: #fff;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .card p, .card li {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.9;
+    }
+
+    .card ul {
+      list-style: none;
+      padding: 0;
+      margin: 8px 0 0;
+    }
+
+    .card ul li {
+      padding: 4px 0;
+      padding-right: 20px;
+      position: relative;
+    }
+
+    .card ul li::before {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 14px;
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .footer a {
+      color: var(--teal);
+      text-decoration: none;
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 20px 16px 48px; }
+      .card { padding: 20px 20px; border-radius: 12px; }
+      .page-title { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div class="top-bar-inner">
+      <a href="/" class="logo-link">
+        <img src="/logo.png" alt="מזכיר">
+        <h1>מזכיר - תנאי שימוש</h1>
+      </a>
+      <a href="/" class="back-link">חזרה לדף הבית &larr;</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1 class="page-title">תנאי שימוש</h1>
+    <p class="page-subtitle">עדכון אחרון: מרץ 2026</p>
+
+    <div class="card">
+      <h2><span class="num">1</span> הסכמה</h2>
+      <p>
+        השימוש בשירות מזכיר מהווה הסכמה מלאה לתנאי שימוש אלו.
+        אם אינך מסכים לתנאים, אנא הימנע משימוש בשירות.
+        בהרשמה לשירות, הנך מאשר כי קראת והבנת את תנאי השימוש ומדיניות הפרטיות.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">2</span> תיאור השירות</h2>
+      <p>
+        מזכיר הוא עוזר אישי חכם הפועל דרך וואטסאפ, המאפשר:
+      </p>
+      <ul>
+        <li>ניהול יומן ואירועים</li>
+        <li>הגדרת תזכורות</li>
+        <li>ניהול משימות ומטלות</li>
+        <li>ניהול רשימות קניות</li>
+        <li>סנכרון עם לוחות שנה חיצוניים (Google, Apple)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">3</span> הרשמה</h2>
+      <p>
+        לצורך שימוש בשירות, נדרשים הפרטים הבאים:
+      </p>
+      <ul>
+        <li>מספר טלפון פעיל עם וואטסאפ</li>
+        <li>שם מלא</li>
+        <li>כתובת אימייל</li>
+      </ul>
+      <p style="margin-top: 8px;">
+        הנך מתחייב למסור פרטים מדויקים ונכונים.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">4</span> שימוש מותר</h2>
+      <p>השירות מיועד לשימוש אישי בלבד. בשימוש בשירות הנך מתחייב:</p>
+      <ul>
+        <li>לא לשלוח ספאם או הודעות פוגעניות</li>
+        <li>לא להשתמש בשירות לרעה או למטרות בלתי חוקיות</li>
+        <li>לא לנסות לפרוץ או לשבש את פעולת השירות</li>
+        <li>לא להתחזות לאדם אחר</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">5</span> תקופת ניסיון</h2>
+      <p>
+        השירות מציע תקופת ניסיון של שבוע בעלות סמלית של <strong>&#8362;1</strong> בלבד.
+        בתום תקופת הניסיון, ניתן להמשיך להשתמש בשירות בהתאם למחירון העדכני.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">6</span> זמינות השירות</h2>
+      <p>
+        השירות ניתן <strong>"כמות שהוא" (AS IS)</strong>.
+        אנו עושים מאמצים רבים לשמור על זמינות גבוהה, אך אין ביכולתנו להבטיח פעילות רציפה ללא הפרעות.
+        אנחנו לא אחראים לכל הפסד, נזק או אי-נוחות שעלולים להיגרם כתוצאה מהשימוש בשירות או מחוסר זמינות שלו.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">7</span> קניין רוחני</h2>
+      <p>
+        כל הזכויות בשירות, כולל עיצוב, קוד, לוגו, שם המותג ותכנים, שמורות למזכיר.
+        אין להעתיק, לשכפל או להפיץ חלק כלשהו מהשירות ללא אישור מראש ובכתב.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">8</span> הפסקת שירות</h2>
+      <p>
+        אנו שומרים לעצמנו את הזכות להפסיק את מתן השירות למשתמש בכל עת, ובפרט במקרים של הפרת תנאי שימוש אלו.
+        כמו כן, אנו רשאים להפסיק את השירות כולו לפי שיקול דעתנו.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">9</span> שינויים בתנאים</h2>
+      <p>
+        אנו שומרים לעצמנו את הזכות לעדכן את תנאי השימוש מעת לעת.
+        שינויים מהותיים יפורסמו בעמוד זה. המשך השימוש בשירות לאחר עדכון התנאים מהווה הסכמה לתנאים המעודכנים.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">10</span> יצירת קשר</h2>
+      <p>
+        לשאלות או בקשות בנוגע לתנאי השימוש, ניתן לפנות אלינו דרך האתר:
+        <a href="https://maztary.com" style="color: var(--teal); font-weight: 600;">maztary.com</a>
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">11</span> דין חל</h2>
+      <p>
+        על תנאי שימוש אלו יחולו חוקי מדינת ישראל בלבד.
+        כל סכסוך הנובע מתנאים אלו או מהשימוש בשירות יידון בבתי המשפט המוסמכים בישראל.
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2026 מזכיר. כל הזכויות שמורות. | <a href="/privacy.html">מדיניות פרטיות</a></p>
+  </div>
+
+</body>
+</html>

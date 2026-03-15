@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>מדיניות פרטיות - מזכיר</title>
+  <meta name="description" content="מדיניות הפרטיות של מזכיר - העוזר החכם שלך בוואטסאפ">
+  <link rel="icon" type="image/png" href="/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #ECE5DD;
+      --green: #25D366;
+      --green-dark: #075e54;
+      --teal: #075e54;
+      --text: #111b21;
+      --text-secondary: #3b4a54;
+      --text-muted: #667781;
+      --surface: rgba(255, 255, 255, 0.85);
+      --border: rgba(0, 0, 0, 0.08);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      direction: rtl;
+      line-height: 1.8;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .top-bar {
+      background: var(--teal);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .top-bar-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .top-bar a.logo-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: #fff;
+    }
+
+    .top-bar img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+
+    .top-bar h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .top-bar .back-link {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .top-bar .back-link:hover {
+      color: #fff;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    .page-title {
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--teal);
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      transition: box-shadow 0.2s;
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h2 .num {
+      background: var(--green);
+      color: #fff;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .card p, .card li {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.9;
+    }
+
+    .card ul {
+      list-style: none;
+      padding: 0;
+      margin: 8px 0 0;
+    }
+
+    .card ul li {
+      padding: 4px 0;
+      padding-right: 20px;
+      position: relative;
+    }
+
+    .card ul li::before {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 14px;
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .footer a {
+      color: var(--teal);
+      text-decoration: none;
+    }
+
+    @media (max-width: 600px) {
+      .container { padding: 20px 16px 48px; }
+      .card { padding: 20px 20px; border-radius: 12px; }
+      .page-title { font-size: 1.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div class="top-bar-inner">
+      <a href="/" class="logo-link">
+        <img src="/logo.png" alt="מזכיר">
+        <h1>מזכיר - מדיניות פרטיות</h1>
+      </a>
+      <a href="/" class="back-link">חזרה לדף הבית &larr;</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1 class="page-title">מדיניות פרטיות</h1>
+    <p class="page-subtitle">עדכון אחרון: מרץ 2026</p>
+
+    <div class="card">
+      <h2><span class="num">1</span> מבוא</h2>
+      <p>
+        מזכיר (<a href="https://maztary.com" style="color: var(--teal);">maztary.com</a>) הוא שירות עוזר אישי חכם הפועל דרך וואטסאפ.
+        השירות מאפשר ניהול יומן, תזכורות, משימות ורשימות קניות באמצעות שיחה טבעית בעברית.
+        מדיניות פרטיות זו מסבירה כיצד אנו אוספים, משתמשים ומגנים על המידע שלך.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">2</span> מידע שנאסף</h2>
+      <p>במסגרת השימוש בשירות, אנו אוספים את המידע הבא:</p>
+      <ul>
+        <li>שם מלא</li>
+        <li>מספר טלפון</li>
+        <li>כתובת אימייל</li>
+        <li>הודעות שיחה עם הבוט</li>
+        <li>אירועים ופגישות</li>
+        <li>משימות ורשימות מטלות</li>
+        <li>רשימות קניות</li>
+        <li>תזכורות</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">3</span> שימוש במידע</h2>
+      <p>המידע שנאסף משמש אותנו למטרות הבאות:</p>
+      <ul>
+        <li>ניהול והפעלת השירות</li>
+        <li>סנכרון לוחות שנה (Google Calendar, Apple Calendar)</li>
+        <li>שליחת תזכורות והתראות</li>
+        <li>שיפור חוויית המשתמש והשירות</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">4</span> אחסון והצפנה</h2>
+      <p>
+        אנו מייחסים חשיבות עליונה לאבטחת המידע שלך.
+        כל ההודעות ופרטי החיבור מוצפנים באמצעות <strong>AES-256-GCM</strong>, תקן ההצפנה המתקדם ביותר.
+        הנתונים מאוחסנים בשרתים מאובטחים עם בקרות גישה קפדניות.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">5</span> שיתוף מידע</h2>
+      <p>
+        אנחנו <strong>לא מוכרים ולא משתפים</strong> מידע אישי עם צדדים שלישיים למטרות שיווקיות.
+        השירות משתמש בשירותי צד שלישי הבאים לצורך הפעלתו:
+      </p>
+      <ul>
+        <li><strong>OpenAI</strong> - עיבוד והבנת הודעות בשפה טבעית</li>
+        <li><strong>Google Calendar API</strong> - סנכרון אירועים עם יומן גוגל</li>
+        <li><strong>Apple CalDAV</strong> - סנכרון אירועים עם יומן אפל</li>
+        <li><strong>Green API</strong> - חיבור לוואטסאפ</li>
+        <li><strong>Supabase</strong> - אחסון נתונים (מסד נתונים)</li>
+        <li><strong>Resend</strong> - שליחת הודעות אימייל</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">6</span> זכויות המשתמש</h2>
+      <p>כמשתמש בשירות, עומדות לך הזכויות הבאות:</p>
+      <ul>
+        <li>גישה למידע האישי שלך</li>
+        <li>תיקון מידע שגוי</li>
+        <li>מחיקת המידע שלך</li>
+        <li>ניידות נתונים - קבלת העתק של המידע שלך</li>
+        <li>ביטול הסכמה לשימוש במידע</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">7</span> מחיקת חשבון</h2>
+      <p>
+        באפשרותך לבקש מחיקה מלאה של החשבון והמידע שלך בכל עת.
+        לאחר בקשת המחיקה, כל הנתונים שלך יימחקו לצמיתות מהמערכת, כולל הודעות, אירועים, משימות ותזכורות.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">8</span> עוגיות (Cookies)</h2>
+      <p>
+        האתר והשירות <strong>אינם משתמשים בעוגיות</strong> (Cookies).
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">9</span> שינויים במדיניות</h2>
+      <p>
+        אנו שומרים לעצמנו את הזכות לעדכן את מדיניות הפרטיות מעת לעת.
+        שינויים מהותיים יפורסמו בעמוד זה. המשך השימוש בשירות לאחר עדכון המדיניות מהווה הסכמה למדיניות המעודכנת.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">10</span> יצירת קשר</h2>
+      <p>
+        לשאלות או בקשות בנוגע למדיניות הפרטיות, ניתן לפנות אלינו דרך האתר:
+        <a href="https://maztary.com" style="color: var(--teal); font-weight: 600;">maztary.com</a>
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>&copy; 2026 מזכיר. כל הזכויות שמורות. | <a href="/terms.html">תנאי שימוש</a></p>
+  </div>
+
+</body>
+</html>
