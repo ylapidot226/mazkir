@@ -16,167 +16,191 @@
   <meta property="og:image:height" content="1024">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg: #080808;
-      --accent: #7C3AED;
-      --accent-light: #A78BFA;
-      --accent-glow: rgba(124, 58, 237, 0.4);
-      --text: #F1F1F1;
-      --text-muted: #8B8B8B;
-      --glass-bg: rgba(255, 255, 255, 0.04);
-      --glass-border: rgba(255, 255, 255, 0.08);
-      --glass-border-hover: rgba(255, 255, 255, 0.15);
+      --bg: #0B141A;
+      --bg-secondary: #111B21;
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-hover: rgba(37, 211, 102, 0.3);
+      --primary: #25D366;
+      --primary-dark: #075E54;
+      --primary-light: #DCF8C6;
+      --primary-glow: rgba(37, 211, 102, 0.25);
+      --text: #E9EDEF;
+      --text-muted: #8696A0;
+      --sent-bg: #005C4B;
+      --received-bg: #1F2C33;
     }
 
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       direction: rtl;
       overflow-x: hidden;
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
-    /* Grain texture overlay */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      pointer-events: none;
-      opacity: 0.03;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    }
-
-    /* Animated gradient background */
-    .bg-gradient {
+    /* Ambient background */
+    .bg-ambient {
       position: fixed;
       inset: 0;
       z-index: -1;
       overflow: hidden;
     }
-    .bg-gradient::before {
+    .bg-ambient::before {
+      content: '';
+      position: absolute;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(37, 211, 102, 0.07), transparent 70%);
+      top: -250px;
+      right: -200px;
+      animation: ambientFloat1 25s ease-in-out infinite;
+    }
+    .bg-ambient::after {
       content: '';
       position: absolute;
       width: 600px;
       height: 600px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(124, 58, 237, 0.15), transparent 70%);
-      top: -200px;
-      right: -100px;
-      animation: floatGrad1 20s ease-in-out infinite;
+      background: radial-gradient(circle, rgba(7, 94, 84, 0.1), transparent 70%);
+      bottom: -150px;
+      left: -150px;
+      animation: ambientFloat2 30s ease-in-out infinite;
     }
-    .bg-gradient::after {
-      content: '';
-      position: absolute;
-      width: 500px;
-      height: 500px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
-      bottom: -100px;
-      left: -100px;
-      animation: floatGrad2 25s ease-in-out infinite;
+    @keyframes ambientFloat1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-100px, 100px) scale(1.1); }
     }
-    @keyframes floatGrad1 {
-      0%, 100% { transform: translate(0, 0); }
-      50% { transform: translate(-80px, 80px); }
-    }
-    @keyframes floatGrad2 {
-      0%, 100% { transform: translate(0, 0); }
-      50% { transform: translate(60px, -60px); }
-    }
-
-    /* Cursor glow */
-    .cursor-glow {
-      position: fixed;
-      width: 300px;
-      height: 300px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(124, 58, 237, 0.08), transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-      transform: translate(-50%, -50%);
-      transition: left 0.3s ease, top 0.3s ease;
+    @keyframes ambientFloat2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(80px, -80px) scale(1.05); }
     }
 
     /* Container */
     .container {
-      max-width: 1100px;
+      max-width: 1140px;
       margin: 0 auto;
       padding: 0 1.5rem;
     }
 
-    /* Navigation */
+    /* ===== NAVIGATION ===== */
     nav {
       position: fixed;
       top: 0;
       left: 0;
       right: 0;
       z-index: 100;
-      padding: 1rem 0;
-      background: rgba(8, 8, 8, 0.8);
+      padding: 0.8rem 0;
+      background: rgba(11, 20, 26, 0.75);
       backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--glass-border);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--card-border);
+      transition: background 0.3s;
     }
     nav .container {
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .logo {
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+    .nav-logo img {
+      height: 36px;
+      border-radius: 10px;
+    }
+    .nav-logo span {
       font-size: 1.3rem;
       font-weight: 700;
-      background: linear-gradient(135deg, var(--accent-light), var(--accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: var(--text);
     }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+    }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
     .nav-cta {
-      padding: 0.5rem 1.2rem;
-      background: var(--accent);
+      padding: 0.55rem 1.4rem;
+      background: var(--primary);
       color: #fff;
       border: none;
-      border-radius: 8px;
-      font-size: 0.85rem;
+      border-radius: 24px;
+      font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.3s;
       font-family: inherit;
+      text-decoration: none;
     }
-    .nav-cta:hover { background: #6D28D9; transform: translateY(-1px); }
+    .nav-cta:hover {
+      background: #1ebe5d;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px var(--primary-glow);
+    }
 
-    /* Hero */
+    /* ===== HERO ===== */
     .hero {
-      padding: 10rem 0 6rem;
+      padding: 9rem 0 5rem;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 3rem;
+      gap: 4rem;
       align-items: center;
     }
     .hero-content { position: relative; z-index: 2; }
     .hero-badge {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
       padding: 0.4rem 1rem;
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
+      background: rgba(37, 211, 102, 0.1);
+      border: 1px solid rgba(37, 211, 102, 0.2);
       border-radius: 100px;
       font-size: 0.85rem;
-      color: var(--accent-light);
+      color: var(--primary);
       margin-bottom: 1.5rem;
-      backdrop-filter: blur(10px);
+      font-weight: 500;
+    }
+    .hero-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
     }
     .hero h1 {
-      font-size: clamp(2.5rem, 5vw, 4.5rem);
-      font-weight: 700;
-      line-height: 1.15;
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.2;
       margin-bottom: 1.2rem;
-      background: linear-gradient(135deg, #fff 0%, var(--accent-light) 50%, var(--accent) 100%);
+      color: #fff;
+    }
+    .hero h1 .highlight {
+      background: linear-gradient(135deg, var(--primary), #1ebe5d);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -184,125 +208,208 @@
     .hero-subtitle {
       font-size: 1.15rem;
       color: var(--text-muted);
-      margin-bottom: 2rem;
-      font-weight: 300;
-      max-width: 480px;
-      line-height: 1.7;
+      margin-bottom: 2.5rem;
+      font-weight: 400;
+      max-width: 500px;
+      line-height: 1.8;
     }
-    .hero-buttons { display: flex; gap: 1rem; flex-wrap: wrap; }
-    .btn-primary {
-      padding: 0.85rem 1.8rem;
-      background: var(--accent);
+    .hero-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 1rem 2.2rem;
+      background: var(--primary);
       color: #fff;
       border: none;
-      border-radius: 12px;
-      font-size: 1rem;
+      border-radius: 50px;
+      font-size: 1.1rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s;
       font-family: inherit;
-      position: relative;
-      overflow: hidden;
+      text-decoration: none;
+      box-shadow: 0 4px 25px var(--primary-glow);
     }
-    .btn-primary::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1));
-      opacity: 0;
-      transition: opacity 0.3s;
+    .hero-cta:hover {
+      background: #1ebe5d;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 40px rgba(37, 211, 102, 0.35);
     }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
-    .btn-primary:hover::after { opacity: 1; }
-    .btn-outline {
-      padding: 0.85rem 1.8rem;
-      background: transparent;
-      color: var(--text-muted);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-family: inherit;
+    .hero-cta svg {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.3s;
     }
-    .btn-outline:hover { border-color: var(--accent); color: var(--accent-light); }
+    .hero-cta:hover svg {
+      transform: translateX(-4px);
+    }
 
-    /* WhatsApp Mockup */
-    .wa-mockup {
-      background: #111B21;
-      border-radius: 20px;
+    /* ===== PHONE MOCKUP ===== */
+    .phone-wrapper {
+      display: flex;
+      justify-content: center;
+      perspective: 1000px;
+    }
+    .phone-mockup {
+      width: 320px;
+      background: var(--bg-secondary);
+      border-radius: 32px;
       overflow: hidden;
-      box-shadow: 0 25px 80px rgba(0,0,0,0.5);
-      border: 1px solid rgba(255,255,255,0.05);
-      max-width: 360px;
+      box-shadow:
+        0 25px 80px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 0 60px rgba(37, 211, 102, 0.08);
+      transform: rotateY(-8deg) rotateX(3deg);
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+    .phone-mockup:hover {
+      transform: rotateY(-2deg) rotateX(1deg);
+    }
+    .phone-notch {
+      width: 120px;
+      height: 28px;
+      background: #000;
+      border-radius: 0 0 16px 16px;
       margin: 0 auto;
+      position: relative;
+      z-index: 5;
+    }
+    .phone-notch::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #1a2a33;
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
     }
     .wa-header {
-      background: #1F2C33;
-      padding: 0.8rem 1rem;
+      background: var(--received-bg);
+      padding: 0.7rem 1rem;
       display: flex;
       align-items: center;
       gap: 0.7rem;
+    }
+    .wa-back {
+      color: var(--text-muted);
+      font-size: 1.2rem;
     }
     .wa-avatar {
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), #3B82F6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
+      overflow: hidden;
     }
-    .wa-name { font-size: 0.95rem; font-weight: 600; color: #E9EDEF; }
-    .wa-status { font-size: 0.75rem; color: #8696A0; }
+    .wa-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .wa-header-info { flex: 1; }
+    .wa-name { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .wa-status { font-size: 0.72rem; color: var(--text-muted); }
     .wa-messages {
-      padding: 1rem;
-      min-height: 280px;
+      padding: 0.8rem;
+      min-height: 340px;
+      max-height: 340px;
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
-      background: url("data:image/svg+xml,%3Csvg width='400' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='40' height='40' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='20' cy='20' r='1' fill='rgba(255,255,255,0.02)'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='%230B141A'/%3E%3Crect width='100%25' height='100%25' fill='url(%23p)'/%3E%3C/svg%3E");
+      gap: 0.4rem;
+      background: var(--bg);
+      background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='50' height='50' patternUnits='userSpaceOnUse'%3E%3Cpath d='M25 0 L25 50 M0 25 L50 25' stroke='rgba(255,255,255,0.015)' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23p)'/%3E%3C/svg%3E");
     }
+    .wa-messages::-webkit-scrollbar { width: 3px; }
+    .wa-messages::-webkit-scrollbar-track { background: transparent; }
+    .wa-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
     .wa-msg {
-      max-width: 85%;
-      padding: 0.5rem 0.7rem;
+      max-width: 88%;
+      padding: 0.45rem 0.6rem;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       line-height: 1.5;
       opacity: 0;
-      transform: translateY(10px);
-      transition: all 0.4s ease;
+      transform: translateY(15px) scale(0.95);
+      position: relative;
+      word-wrap: break-word;
     }
-    .wa-msg.visible { opacity: 1; transform: translateY(0); }
+    .wa-msg.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      animation: msgPopIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes msgPopIn {
+      0% { opacity: 0; transform: translateY(15px) scale(0.9); }
+      50% { transform: translateY(-3px) scale(1.02); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
     .wa-msg.sent {
-      background: #005C4B;
-      color: #E9EDEF;
+      background: var(--sent-bg);
+      color: var(--text);
       align-self: flex-end;
       border-bottom-left-radius: 8px;
       border-bottom-right-radius: 2px;
     }
     .wa-msg.received {
-      background: #1F2C33;
-      color: #E9EDEF;
+      background: var(--received-bg);
+      color: var(--text);
       align-self: flex-start;
       border-bottom-right-radius: 8px;
       border-bottom-left-radius: 2px;
     }
     .wa-msg .time {
-      font-size: 0.65rem;
-      color: rgba(255,255,255,0.45);
+      font-size: 0.62rem;
+      color: rgba(255, 255, 255, 0.4);
       text-align: left;
-      margin-top: 0.2rem;
+      margin-top: 0.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.2rem;
+    }
+    .wa-msg.sent .time .checks { color: #53BDEB; }
+    .wa-input-bar {
+      background: var(--received-bg);
+      padding: 0.5rem 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .wa-input-field {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      border-radius: 20px;
+      padding: 0.5rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-family: inherit;
+      direction: rtl;
+    }
+    .wa-send-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1rem;
+      flex-shrink: 0;
     }
     .wa-typing {
       align-self: flex-start;
-      background: #1F2C33;
-      padding: 0.6rem 1rem;
+      background: var(--received-bg);
+      padding: 0.55rem 0.9rem;
       border-radius: 8px;
       display: flex;
-      gap: 0.3rem;
+      gap: 0.25rem;
       opacity: 0;
       transition: opacity 0.3s;
     }
@@ -311,7 +418,7 @@
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #8696A0;
+      background: var(--text-muted);
       animation: typingDot 1.4s infinite;
     }
     .wa-typing span:nth-child(2) { animation-delay: 0.2s; }
@@ -321,67 +428,101 @@
       30% { transform: translateY(-4px); opacity: 1; }
     }
 
-    /* Social Proof */
+    /* ===== SOCIAL PROOF ===== */
     .social-proof {
-      padding: 3rem 0;
-      text-align: center;
-      border-top: 1px solid var(--glass-border);
-      border-bottom: 1px solid var(--glass-border);
+      padding: 3.5rem 0;
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.02);
     }
     .social-proof-inner {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 1rem;
+      gap: 2.5rem;
       flex-wrap: wrap;
+    }
+    .proof-stat {
+      text-align: center;
+    }
+    .proof-stat .number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--primary);
+      display: block;
+      font-variant-numeric: tabular-nums;
+    }
+    .proof-stat .label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .proof-divider {
+      width: 1px;
+      height: 40px;
+      background: var(--card-border);
+    }
+    .proof-users {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
     }
     .avatars {
       display: flex;
-      margin-left: 0.5rem;
+      direction: ltr;
     }
     .avatars span {
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       border: 2px solid var(--bg);
-      margin-right: -8px;
+      margin-right: -10px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem;
-    }
-    .avatars span:nth-child(1) { background: linear-gradient(135deg, #7C3AED, #3B82F6); }
-    .avatars span:nth-child(2) { background: linear-gradient(135deg, #059669, #10B981); }
-    .avatars span:nth-child(3) { background: linear-gradient(135deg, #F59E0B, #EF4444); }
-    .avatars span:nth-child(4) { background: linear-gradient(135deg, #EC4899, #8B5CF6); }
-    .social-proof-text {
-      color: var(--text-muted);
-      font-size: 0.95rem;
-    }
-    .social-proof-text strong {
-      color: var(--text);
+      font-size: 0.8rem;
       font-weight: 600;
+      color: #fff;
     }
-    .counter { font-variant-numeric: tabular-nums; }
+    .avatars span:nth-child(1) { background: linear-gradient(135deg, #25D366, #075E54); z-index: 4; }
+    .avatars span:nth-child(2) { background: linear-gradient(135deg, #128C7E, #25D366); z-index: 3; }
+    .avatars span:nth-child(3) { background: linear-gradient(135deg, #075E54, #128C7E); z-index: 2; }
+    .avatars span:nth-child(4) { background: linear-gradient(135deg, #34B7F1, #075E54); z-index: 1; }
+    .proof-text {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+    .proof-text strong {
+      color: var(--text);
+      font-weight: 700;
+    }
 
-    /* Features */
+    /* ===== FEATURES ===== */
     .features {
       padding: 6rem 0;
     }
     .section-label {
       text-align: center;
       font-size: 0.85rem;
-      color: var(--accent-light);
-      text-transform: uppercase;
+      color: var(--primary);
       letter-spacing: 2px;
       margin-bottom: 0.8rem;
       font-weight: 600;
     }
     .section-title {
       text-align: center;
-      font-size: clamp(1.8rem, 3vw, 2.5rem);
-      font-weight: 700;
-      margin-bottom: 3rem;
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 800;
+      margin-bottom: 1rem;
+      color: #fff;
+    }
+    .section-subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 550px;
+      margin: 0 auto 3.5rem;
+      font-weight: 400;
     }
     .features-grid {
       display: grid;
@@ -389,45 +530,83 @@
       gap: 1.5rem;
     }
     .feature-card {
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
       padding: 2rem;
       backdrop-filter: blur(10px);
-      transition: all 0.3s;
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: radial-gradient(circle at 50% 0%, rgba(37, 211, 102, 0.06), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.4s;
     }
     .feature-card:hover {
-      border-color: var(--glass-border-hover);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+      border-color: var(--card-border-hover);
+      transform: translateY(-6px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 0 40px rgba(37, 211, 102, 0.08);
     }
+    .feature-card:hover::before { opacity: 1; }
     .feature-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--accent), rgba(124, 58, 237, 0.3));
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(37, 211, 102, 0.15), rgba(7, 94, 84, 0.15));
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       margin-bottom: 1.2rem;
-      box-shadow: 0 0 30px var(--accent-glow);
+      animation: iconFloat 3s ease-in-out infinite;
+      position: relative;
+      z-index: 1;
     }
+    @keyframes iconFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .feature-card:nth-child(2) .feature-icon { animation-delay: 0.3s; }
+    .feature-card:nth-child(3) .feature-icon { animation-delay: 0.6s; }
+    .feature-card:nth-child(4) .feature-icon { animation-delay: 0.9s; }
+    .feature-card:nth-child(5) .feature-icon { animation-delay: 1.2s; }
+    .feature-card:nth-child(6) .feature-icon { animation-delay: 1.5s; }
+    .feature-card:nth-child(7) .feature-icon { animation-delay: 1.8s; }
+    .feature-card:nth-child(8) .feature-icon { animation-delay: 2.1s; }
+    .feature-card:nth-child(9) .feature-icon { animation-delay: 2.4s; }
     .feature-card h3 {
-      font-size: 1.15rem;
-      font-weight: 600;
-      margin-bottom: 0.6rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: #fff;
+      position: relative;
+      z-index: 1;
+    }
+    .feature-card h3 .check {
+      color: #53BDEB;
+      font-size: 0.85rem;
+      margin-right: 0.3rem;
     }
     .feature-card p {
       color: var(--text-muted);
       font-size: 0.9rem;
-      line-height: 1.6;
-      font-weight: 300;
+      line-height: 1.7;
+      font-weight: 400;
+      position: relative;
+      z-index: 1;
     }
 
-    /* How it works */
+    /* ===== HOW IT WORKS ===== */
     .how-it-works {
       padding: 6rem 0;
+      background: rgba(255, 255, 255, 0.01);
     }
     .steps {
       display: flex;
@@ -440,72 +619,75 @@
     .steps::before {
       content: '';
       position: absolute;
-      right: 24px;
-      top: 48px;
-      bottom: 48px;
+      right: 27px;
+      top: 55px;
+      bottom: 55px;
       width: 2px;
-      background: linear-gradient(to bottom, var(--accent), transparent);
+      background: linear-gradient(to bottom, var(--primary), rgba(37, 211, 102, 0.1));
     }
     .step {
       display: grid;
-      grid-template-columns: 50px 1fr;
+      grid-template-columns: 56px 1fr;
       gap: 1.5rem;
       align-items: start;
     }
     .step-number {
-      width: 48px;
-      height: 48px;
+      width: 56px;
+      height: 56px;
       border-radius: 50%;
-      background: var(--glass-bg);
-      border: 2px solid var(--accent);
+      background: var(--bg);
+      border: 2px solid var(--primary);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: var(--accent-light);
-      box-shadow: 0 0 20px var(--accent-glow);
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--primary);
+      box-shadow: 0 0 25px var(--primary-glow);
       position: relative;
       z-index: 2;
     }
     .step-content h3 {
-      font-size: 1.15rem;
-      font-weight: 600;
+      font-size: 1.2rem;
+      font-weight: 700;
       margin-bottom: 0.5rem;
+      color: #fff;
     }
     .step-content p {
       color: var(--text-muted);
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       margin-bottom: 1rem;
-      font-weight: 300;
+      font-weight: 400;
     }
     .step-chat {
-      background: #111B21;
-      border-radius: 12px;
+      background: var(--bg-secondary);
+      border-radius: 14px;
       padding: 0.8rem;
       display: flex;
       flex-direction: column;
       gap: 0.4rem;
-      border: 1px solid rgba(255,255,255,0.05);
+      border: 1px solid var(--card-border);
     }
     .step-chat .wa-msg {
       opacity: 1;
       transform: none;
-      font-size: 0.8rem;
-      padding: 0.4rem 0.6rem;
+      font-size: 0.82rem;
+      padding: 0.45rem 0.6rem;
     }
 
-    /* CTA Section */
+    /* ===== CTA / SIGNUP ===== */
     .cta-section {
       padding: 6rem 0;
     }
     .cta-card {
-      max-width: 550px;
+      max-width: 520px;
       margin: 0 auto;
       padding: 3rem;
-      border-radius: 20px;
-      background: var(--glass-bg);
+      border-radius: 24px;
+      background: var(--card-bg);
       backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -513,189 +695,258 @@
     .cta-card::before {
       content: '';
       position: absolute;
-      inset: -2px;
-      border-radius: 22px;
-      padding: 2px;
-      background: conic-gradient(from var(--border-angle, 0deg), var(--accent), transparent 30%, var(--accent) 60%, transparent 90%);
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      animation: rotateBorder 4s linear infinite;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(from 0deg, transparent, rgba(37, 211, 102, 0.08), transparent, rgba(37, 211, 102, 0.05), transparent);
+      animation: rotateBg 8s linear infinite;
     }
-    @property --border-angle {
-      syntax: '<angle>';
-      initial-value: 0deg;
-      inherits: false;
+    @keyframes rotateBg {
+      to { transform: rotate(360deg); }
     }
-    @keyframes rotateBorder {
-      to { --border-angle: 360deg; }
-    }
+    .cta-card > * { position: relative; z-index: 1; }
     .cta-card h2 {
       font-size: 1.8rem;
-      font-weight: 700;
+      font-weight: 800;
       margin-bottom: 0.5rem;
+      color: #fff;
     }
     .cta-card .subtitle {
       color: var(--text-muted);
       margin-bottom: 2rem;
-      font-weight: 300;
+      font-weight: 400;
+      font-size: 0.95rem;
     }
     .form-group {
-      margin-bottom: 1rem;
+      margin-bottom: 0.8rem;
       position: relative;
     }
-    .form-group input {
+    .form-group input,
+    .form-group select {
       width: 100%;
-      padding: 0.9rem 1rem;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
       color: var(--text);
       font-size: 0.95rem;
       font-family: inherit;
       transition: all 0.3s;
       direction: rtl;
     }
-    .form-group input::placeholder { color: #555; }
-    .form-group input:focus {
+    .form-group input::placeholder { color: var(--text-muted); }
+    .form-group input:focus,
+    .form-group select:focus {
       outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 20px var(--accent-glow);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.15);
     }
+    .phone-row {
+      display: flex;
+      gap: 0.5rem;
+      direction: ltr;
+    }
+    .phone-row select {
+      width: 110px;
+      padding: 0.85rem 0.5rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: inherit;
+      transition: all 0.3s;
+    }
+    .phone-row select option {
+      background: var(--bg-secondary);
+      color: var(--text);
+    }
+    .phone-row input { flex: 1; }
     .submit-btn {
       width: 100%;
       padding: 0.95rem;
-      background: var(--accent);
+      background: var(--primary);
       color: #fff;
       border: none;
-      border-radius: 12px;
-      font-size: 1rem;
-      font-weight: 600;
+      border-radius: 50px;
+      font-size: 1.05rem;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.3s;
       font-family: inherit;
       position: relative;
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
     }
-    .submit-btn:hover { background: #6D28D9; transform: translateY(-1px); }
-    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+    .submit-btn:hover {
+      background: #1ebe5d;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px var(--primary-glow);
+    }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
     .submit-btn .spinner {
       display: none;
-      width: 18px;
-      height: 18px;
-      border: 2px solid rgba(255,255,255,0.3);
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
       border-top-color: #fff;
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
-      margin: 0 auto;
     }
     .submit-btn.loading .btn-text { display: none; }
     .submit-btn.loading .spinner { display: block; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .form-note {
-      color: #555;
+      color: var(--text-muted);
       font-size: 0.8rem;
       margin-top: 1rem;
     }
     .form-success {
       display: none;
       padding: 1rem;
-      background: rgba(5, 150, 105, 0.15);
-      border: 1px solid rgba(5, 150, 105, 0.3);
-      border-radius: 12px;
-      color: #34D399;
+      background: rgba(37, 211, 102, 0.1);
+      border: 1px solid rgba(37, 211, 102, 0.25);
+      border-radius: 14px;
+      color: var(--primary);
       margin-top: 1rem;
+      font-weight: 500;
     }
 
-    /* Footer */
+    /* ===== FOOTER ===== */
     footer {
-      padding: 2rem 0;
+      padding: 2.5rem 0;
       text-align: center;
-      border-top: 1px solid var(--glass-border);
+      border-top: 1px solid var(--card-border);
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+    .footer-logo img {
+      height: 28px;
+      border-radius: 8px;
+    }
+    .footer-logo span {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    footer p {
       color: var(--text-muted);
       font-size: 0.85rem;
     }
-    footer .logo { font-size: 1.1rem; margin-bottom: 0.5rem; display: block; }
 
-    /* Animations */
+    /* ===== ANIMATIONS ===== */
     .animate-in {
       opacity: 0;
-      transform: translateY(30px);
-      transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: translateY(40px);
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .animate-in.visible {
       opacity: 1;
       transform: translateY(0);
     }
+    .animate-in.delay-1 { transition-delay: 0.1s; }
+    .animate-in.delay-2 { transition-delay: 0.2s; }
+    .animate-in.delay-3 { transition-delay: 0.3s; }
+    .animate-in.delay-4 { transition-delay: 0.4s; }
+    .animate-in.delay-5 { transition-delay: 0.5s; }
 
-    /* Ripple effect */
-    .ripple {
-      position: relative;
-      overflow: hidden;
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
     }
-    .ripple-effect {
-      position: absolute;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.3);
-      transform: scale(0);
-      animation: rippleAnim 0.6s linear;
-      pointer-events: none;
-    }
-    @keyframes rippleAnim {
-      to { transform: scale(4); opacity: 0; }
-    }
-
-    /* Responsive */
     @media (max-width: 768px) {
       .hero {
         grid-template-columns: 1fr;
-        padding: 8rem 0 4rem;
+        padding: 7rem 0 3rem;
         text-align: center;
+        gap: 2.5rem;
       }
-      .hero-subtitle { margin: 0 auto 2rem; }
-      .hero-buttons { justify-content: center; }
-      .wa-mockup { max-width: 320px; }
+      .hero-subtitle {
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .hero-cta { margin: 0 auto; }
+      .phone-mockup {
+        width: 290px;
+        transform: rotateY(0) rotateX(0);
+      }
+      .phone-mockup:hover {
+        transform: rotateY(0) rotateX(0);
+      }
+      .nav-links a:not(.nav-cta) { display: none; }
       .features-grid { grid-template-columns: 1fr; }
-      .step { grid-template-columns: 40px 1fr; gap: 1rem; }
-      .steps::before { right: 19px; }
-      .cta-card { padding: 2rem 1.5rem; }
+      .social-proof-inner { gap: 1.5rem; }
+      .proof-divider { display: none; }
+      .step { grid-template-columns: 44px 1fr; gap: 1rem; }
+      .steps::before { right: 21px; }
+      .cta-card { padding: 2rem 1.5rem; margin: 0 0.5rem; }
+      .wa-messages { min-height: 300px; max-height: 300px; }
+    }
+    @media (max-width: 400px) {
+      .phone-mockup { width: 270px; }
+      .hero h1 { font-size: 2rem; }
     }
   </style>
 </head>
 <body>
 
-<div class="bg-gradient"></div>
-<div class="cursor-glow" id="cursorGlow"></div>
+<div class="bg-ambient"></div>
 
 <!-- Nav -->
 <nav>
   <div class="container">
-    <div class="logo"><img src="/logo.png" alt="מזכיר" style="height:36px;vertical-align:middle;margin-left:8px;border-radius:8px;">מזכיר</div>
-    <button class="nav-cta ripple" onclick="scrollToSignup()">הצטרף עכשיו</button>
+    <a href="#" class="nav-logo">
+      <img src="/logo.png" alt="מזכיר">
+      <span>מזכיר</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">פיצ'רים</a>
+      <a href="#howItWorks">איך זה עובד</a>
+      <a href="#signup" class="nav-cta">הצטרף בחינם</a>
+    </div>
   </div>
 </nav>
 
 <!-- Hero -->
 <section class="hero container">
   <div class="hero-content animate-in">
-    <div class="hero-badge">&#10022; המזכיר החכם שלך בוואטסאפ</div>
-    <h1>תפסיק לשכוח.<br>תתחיל לעשות.</h1>
-    <p class="hero-subtitle">דבר איתו כמו עם חבר — הוא מבין, שומר ומתזכר אותך. כל ערב ב-9 מקבלים סיכום של מחר, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
-    <div class="hero-buttons">
-      <button class="btn-primary ripple" onclick="scrollToSignup()">התחל בחינם &larr;</button>
-      <button class="btn-outline ripple" onclick="scrollToHowItWorks()">איך זה עובד?</button>
-    </div>
+    <div class="hero-badge">המזכיר האישי שלך בוואטסאפ</div>
+    <h1>תפסיק לשכוח.<br><span class="highlight">תתחיל לעשות.</span></h1>
+    <p class="hero-subtitle">דבר איתו כמו עם חבר — הוא מבין, שומר ומזכיר אותך. כל ערב ב-9 סיכום של מחר, ושעה לפני כל אירוע תזכורת. בלי אפליקציות, הכל בוואטסאפ.</p>
+    <a href="#signup" class="hero-cta" onclick="event.preventDefault();scrollToSignup();">
+      <span>התחל בחינם</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </a>
   </div>
-  <div class="animate-in" style="animation-delay: 0.2s">
-    <div class="wa-mockup" id="heroMockup">
+  <div class="phone-wrapper animate-in delay-2">
+    <div class="phone-mockup" id="heroMockup">
+      <div class="phone-notch"></div>
       <div class="wa-header">
-        <div class="wa-avatar"><img src="/logo.png" alt="מזכיר" style="width:36px;height:36px;border-radius:50%;object-fit:cover;"></div>
-        <div>
+        <span class="wa-back">&lsaquo;</span>
+        <div class="wa-avatar"><img src="/logo.png" alt="מזכיר"></div>
+        <div class="wa-header-info">
           <div class="wa-name">מזכיר</div>
           <div class="wa-status">מחובר</div>
         </div>
       </div>
       <div class="wa-messages" id="heroChat">
         <div class="wa-typing" id="heroTyping"><span></span><span></span><span></span></div>
+      </div>
+      <div class="wa-input-bar">
+        <div class="wa-input-field">הקלד הודעה</div>
+        <div class="wa-send-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </div>
       </div>
     </div>
   </div>
@@ -705,11 +956,28 @@
 <section class="social-proof">
   <div class="container">
     <div class="social-proof-inner animate-in">
-      <div class="avatars">
-        <span></span><span></span><span></span><span></span>
+      <div class="proof-users">
+        <div class="avatars">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="proof-text">
+          כבר <strong><span class="counter" data-target="2000">0</span>+</strong> משתמשים
+        </div>
       </div>
-      <div class="social-proof-text">
-        כבר <strong><span class="counter" data-target="2000">0</span>+</strong> אנשים מנהלים את החיים שלהם עם מזכיר
+      <div class="proof-divider"></div>
+      <div class="proof-stat">
+        <span class="number">24/7</span>
+        <span class="label">זמין תמיד</span>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-stat">
+        <span class="number">100%</span>
+        <span class="label">בעברית</span>
+      </div>
+      <div class="proof-divider"></div>
+      <div class="proof-stat">
+        <span class="number">0</span>
+        <span class="label">אפליקציות נוספות</span>
       </div>
     </div>
   </div>
@@ -720,50 +988,51 @@
   <div class="container">
     <div class="section-label animate-in">פיצ'רים</div>
     <h2 class="section-title animate-in">הכל במקום אחד, בשפה שלך</h2>
+    <p class="section-subtitle animate-in">המזכיר החכם שלך מבין עברית טבעית ומנהל את כל החיים שלך ישירות מוואטסאפ</p>
     <div class="features-grid">
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128197;</div>
-        <h3>אירועים חכמים</h3>
+        <h3><span class="check">&#10003;&#10003;</span> אירועים חכמים</h3>
         <p>"מחר ב-9 יש לי פגישה" — כתוב בשפה טבעית והמזכיר שומר הכל. סיכום יומי ב-21:00 ותזכורת שעה לפני כל אירוע.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128269;</div>
-        <h3>מה יש לי?</h3>
+        <h3><span class="check">&#10003;&#10003;</span> מה יש לי?</h3>
         <p>"מה יש לי ביום שני?" או "מה יש לי השבוע?" — שאל את המזכיר ותקבל את כל האירועים והמשימות ליום או לתקופה שביקשת.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128260;</div>
-        <h3>אירועים חוזרים</h3>
+        <h3><span class="check">&#10003;&#10003;</span> אירועים חוזרים</h3>
         <p>"כל יום שני עד חמישי אימון ב-18:00" — המזכיר שומר את התבנית ומייצר אירועים אוטומטית כל שבוע.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128276;</div>
-        <h3>תזכורות חכמות</h3>
+        <h3><span class="check">&#10003;&#10003;</span> תזכורות חכמות</h3>
         <p>כל ערב ב-21:00 סיכום של מה שמחכה לך מחר. שעה לפני כל אירוע — תזכורת נוספת. אפס שכחה.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128203;</div>
-        <h3>משימות ורשימות</h3>
+        <h3><span class="check">&#10003;&#10003;</span> משימות ורשימות</h3>
         <p>הוסף משימות, סדר לפי קטגוריות, וסמן כבוצע ישירות בוואטסאפ דרך סקר אינטראקטיבי.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128722;</div>
-        <h3>רשימת קניות</h3>
+        <h3><span class="check">&#10003;&#10003;</span> רשימת קניות</h3>
         <p>"אני צריך חלב, לחם וביצים" — שומר, מציג ומסמן פריטים שנקנו. הרשימה תמיד איתך.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#128172;</div>
-        <h3>שיחה טבעית</h3>
+        <h3><span class="check">&#10003;&#10003;</span> שיחה טבעית</h3>
         <p>דבר איתו כמו עם חבר — בלי פקודות מיוחדות. הוא מבין עברית טבעית ומגיב בהתאם.</p>
       </div>
       <div class="feature-card animate-in">
-        <div class="feature-icon">&#128196;</div>
-        <h3>סנכרון לוח שנה</h3>
+        <div class="feature-icon">&#128198;</div>
+        <h3><span class="check">&#10003;&#10003;</span> סנכרון לוח שנה</h3>
         <p>חבר את Google Calendar או Apple Calendar — כל אירוע שתוסיף דרך וואטסאפ יופיע בלוח שנה שלך, ולהיפך. סנכרון דו-כיווני אוטומטי.</p>
       </div>
       <div class="feature-card animate-in">
         <div class="feature-icon">&#9989;</div>
-        <h3>סנכרון תזכורות</h3>
+        <h3><span class="check">&#10003;&#10003;</span> סנכרון תזכורות</h3>
         <p>משימות ורשימת קניות מסתנכרנים אוטומטית עם Apple Reminders או Google Tasks. סמנת כבוצע באייפון? גם אצל המזכיר זה מתעדכן.</p>
       </div>
     </div>
@@ -775,6 +1044,7 @@
   <div class="container">
     <div class="section-label animate-in">איך זה עובד</div>
     <h2 class="section-title animate-in">שלושה צעדים פשוטים</h2>
+    <p class="section-subtitle animate-in">בלי התקנות, בלי הגדרות מסובכות. פשוט שולחים הודעה.</p>
     <div class="steps">
       <div class="step animate-in">
         <div class="step-number">1</div>
@@ -782,7 +1052,7 @@
           <h3>שלח הודעה רגילה</h3>
           <p>כתוב בדיוק כמו שאתה מדבר — בעברית, בלי פורמט מיוחד</p>
           <div class="step-chat">
-            <div class="wa-msg sent">יש לי פגישה ביום חמישי ב-14:00 עם עו"ד</div>
+            <div class="wa-msg sent">יש לי פגישה ביום חמישי ב-14:00 עם עו"ד<div class="time"><span class="checks">&#10003;&#10003;</span> 09:41</div></div>
           </div>
         </div>
       </div>
@@ -792,7 +1062,7 @@
           <h3>המזכיר מבין ושומר</h3>
           <p>AI חכם מזהה את הכוונה שלך ושומר בצורה מסודרת</p>
           <div class="step-chat">
-            <div class="wa-msg received">נתפס! &#9989; פגישה עם עו"ד ביום חמישי ב-14:00</div>
+            <div class="wa-msg received">נתפס! &#9989; פגישה עם עו"ד ביום חמישי ב-14:00<div class="time">09:41</div></div>
           </div>
         </div>
       </div>
@@ -802,7 +1072,7 @@
           <h3>מקבל תזכורות בזמן</h3>
           <p>כל ערב ב-9 סיכום של מחר, ושעה לפני כל אירוע — אף פעם לא תשכח</p>
           <div class="step-chat">
-            <div class="wa-msg received">&#127769; ערב טוב! הנה מה שמחכה לך מחר:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>לילה טוב! &#128564;</div>
+            <div class="wa-msg received">&#127769; ערב טוב! הנה מה שמחכה לך מחר:<br><br>• 14:00 - פגישה עם עו"ד<br>• 18:00 - חוג ציור<br><br>לילה טוב! &#128564;<div class="time">21:00</div></div>
           </div>
         </div>
       </div>
@@ -810,7 +1080,7 @@
   </div>
 </section>
 
-<!-- CTA -->
+<!-- CTA / Signup -->
 <section class="cta-section" id="signup">
   <div class="container">
     <div class="cta-card animate-in">
@@ -821,10 +1091,10 @@
           <input type="text" id="nameInput" placeholder="השם שלך" required autocomplete="name">
         </div>
         <div class="form-group">
-          <input type="email" id="emailInput" placeholder="כתובת מייל" required autocomplete="email" dir="ltr" style="text-align: right;">
+          <input type="email" id="emailInput" placeholder="כתובת מייל" required autocomplete="email" dir="ltr" style="text-align:right;">
         </div>
-        <div class="form-group" style="display:flex;gap:0.5rem;direction:ltr;">
-          <select id="countryCode" style="width:110px;padding:0.9rem 0.5rem;background:rgba(255,255,255,0.05);border:1px solid var(--glass-border);border-radius:12px;color:var(--text);font-size:0.9rem;font-family:inherit;">
+        <div class="form-group phone-row">
+          <select id="countryCode">
             <option value="972">IL +972</option>
             <option value="1">US +1</option>
             <option value="44">UK +44</option>
@@ -846,9 +1116,9 @@
             <option value="41">CH +41</option>
             <option value="32">BE +32</option>
           </select>
-          <input type="tel" id="phoneInput" placeholder="מספר טלפון" required autocomplete="tel" dir="ltr" style="flex:1;text-align:left;">
+          <input type="tel" id="phoneInput" placeholder="מספר טלפון" required autocomplete="tel" dir="ltr" style="text-align:left;">
         </div>
-        <button type="submit" class="submit-btn ripple" id="submitBtn">
+        <button type="submit" class="submit-btn" id="submitBtn">
           <span class="btn-text">הצטרף לרשימה</span>
           <div class="spinner"></div>
         </button>
@@ -862,47 +1132,43 @@
 <!-- Footer -->
 <footer>
   <div class="container">
-    <span class="logo"><img src="/logo.png" alt="מזכיר" style="height:32px;vertical-align:middle;margin-left:6px;border-radius:6px;">מזכיר</span>
+    <div class="footer-logo">
+      <img src="/logo.png" alt="מזכיר">
+      <span>מזכיר</span>
+    </div>
     <p>נבנה על ידי יצחק לפידות</p>
   </div>
 </footer>
 
 <script>
-  // Cursor glow
-  const glow = document.getElementById('cursorGlow');
-  document.addEventListener('mousemove', (e) => {
-    glow.style.left = e.clientX + 'px';
-    glow.style.top = e.clientY + 'px';
-  });
-
-  // Intersection Observer for animations
+  // ===== Intersection Observer for fade-in animations =====
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
         entry.target.classList.add('visible');
       }
     });
-  }, { threshold: 0.1 });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
   document.querySelectorAll('.animate-in').forEach((el) => observer.observe(el));
 
-  // Counter animation
+  // ===== Counter animation =====
   const counterObserver = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
         const el = entry.target;
         const target = parseInt(el.dataset.target);
         let current = 0;
-        const increment = target / 40;
+        const increment = target / 50;
         const timer = setInterval(() => {
           current += increment;
           if (current >= target) {
-            el.textContent = target;
+            el.textContent = target.toLocaleString();
             clearInterval(timer);
           } else {
-            el.textContent = Math.floor(current);
+            el.textContent = Math.floor(current).toLocaleString();
           }
-        }, 30);
+        }, 25);
         counterObserver.unobserve(el);
       }
     });
@@ -910,24 +1176,9 @@
 
   document.querySelectorAll('.counter').forEach((el) => counterObserver.observe(el));
 
-  // Ripple effect
-  document.querySelectorAll('.ripple').forEach((btn) => {
-    btn.addEventListener('click', function (e) {
-      const ripple = document.createElement('span');
-      ripple.classList.add('ripple-effect');
-      const rect = this.getBoundingClientRect();
-      const size = Math.max(rect.width, rect.height);
-      ripple.style.width = ripple.style.height = size + 'px';
-      ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
-      ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
-      this.appendChild(ripple);
-      setTimeout(() => ripple.remove(), 600);
-    });
-  });
-
-  // WhatsApp chat animation
+  // ===== WhatsApp chat animation =====
   const chatMessages = [
-    { type: 'sent', text: 'מחר ב-10 יש לי פגישה עם רואה חשבון', delay: 500 },
+    { type: 'sent', text: 'מחר ב-10 יש לי פגישה עם רואה חשבון', delay: 600 },
     { type: 'typing', delay: 1200 },
     { type: 'received', text: 'נתפס! &#9989; פגישה עם רואה חשבון מחר ב-10 בבוקר', delay: 1800 },
     { type: 'sent', text: 'תוסיף לרשימת קניות חלב, לחם וביצים', delay: 3000 },
@@ -942,11 +1193,11 @@
     const container = document.getElementById('heroChat');
     const typing = document.getElementById('heroTyping');
 
-    // Clear previous messages
     container.querySelectorAll('.wa-msg').forEach((m) => m.remove());
     typing.classList.remove('visible');
 
     let totalDelay = 0;
+    const now = new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
 
     chatMessages.forEach((msg) => {
       totalDelay += msg.delay;
@@ -957,21 +1208,24 @@
         setTimeout(() => {
           typing.classList.remove('visible');
           const div = document.createElement('div');
-          div.className = `wa-msg ${msg.type}`;
-          div.innerHTML = msg.text.replace(/\n/g, '<br>') + '<div class="time">&#10003;&#10003; ' + new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) + '</div>';
+          div.className = 'wa-msg ' + msg.type;
+          const timeHtml = msg.type === 'sent'
+            ? '<div class="time"><span class="checks">&#10003;&#10003;</span> ' + now + '</div>'
+            : '<div class="time">' + now + '</div>';
+          div.innerHTML = msg.text.replace(/\n/g, '<br>') + timeHtml;
           container.insertBefore(div, typing);
-          requestAnimationFrame(() => div.classList.add('visible'));
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => div.classList.add('visible'));
+          });
           container.scrollTop = container.scrollHeight;
         }, totalDelay);
       }
     });
 
-    // Loop after all messages + pause
-    totalDelay += 4000;
+    totalDelay += 5000;
     setTimeout(runChatAnimation, totalDelay);
   }
 
-  // Start animation when hero is visible
   const heroObserver = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting) {
       setTimeout(runChatAnimation, 800);
@@ -980,7 +1234,7 @@
   });
   heroObserver.observe(document.getElementById('heroMockup'));
 
-  // Scroll functions
+  // ===== Navigation =====
   function scrollToSignup() {
     document.getElementById('signup').scrollIntoView({ behavior: 'smooth' });
   }
@@ -988,7 +1242,17 @@
     document.getElementById('howItWorks').scrollIntoView({ behavior: 'smooth' });
   }
 
-  // Form submit
+  // Sticky nav background on scroll
+  window.addEventListener('scroll', () => {
+    const nav = document.querySelector('nav');
+    if (window.scrollY > 50) {
+      nav.style.background = 'rgba(11, 20, 26, 0.95)';
+    } else {
+      nav.style.background = 'rgba(11, 20, 26, 0.75)';
+    }
+  });
+
+  // ===== Form submission =====
   async function handleSignup(e) {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
@@ -998,7 +1262,6 @@
     const countryCode = document.getElementById('countryCode').value;
     let phone = document.getElementById('phoneInput').value.trim().replace(/[\s\-()+]/g, '');
     if (phone.startsWith('0')) phone = phone.substring(1);
-    // Avoid double country code (e.g. user types +972-55-... with 972 selected)
     if (phone.startsWith(countryCode)) phone = phone.substring(countryCode.length);
     phone = countryCode + phone;
 
@@ -1016,11 +1279,13 @@
       const data = await res.json();
       success.textContent = data.message || 'נרשמת בהצלחה!';
       success.style.display = 'block';
+      success.style.borderColor = 'rgba(37, 211, 102, 0.25)';
+      success.style.color = '#25D366';
       document.getElementById('signupForm').reset();
     } catch {
       success.textContent = 'שגיאה בהרשמה, נסה שוב';
       success.style.display = 'block';
-      success.style.borderColor = 'rgba(220,38,38,0.3)';
+      success.style.borderColor = 'rgba(220, 38, 38, 0.3)';
       success.style.color = '#F87171';
     } finally {
       btn.classList.remove('loading');
