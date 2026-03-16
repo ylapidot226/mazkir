@@ -690,7 +690,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
       case 'connect_monday': {
         const token = await generateConnectToken(userId);
         const shortUrl = `https://maztary.com/c/${token}/m`;
-        await greenApi.sendMessage(chatId, `לחץ על הלינק לחיבור Monday.com:`);
+        await greenApi.sendMessage(chatId, `לחיבור Monday.com לחץ על הלינק *מהמחשב* (Monday לא תומכים בהתחברות מהטלפון):`);
         await greenApi.sendMessage(chatId, shortUrl);
         return shortUrl;
       }
