@@ -7,11 +7,13 @@ const API_URL = 'https://api.monday.com/v2';
  * Build the OAuth authorization URL
  */
 function getAuthUrl(state) {
+  const redirectUri = config.monday.redirectUri || `${config.baseUrl}/monday/callback`;
   const params = new URLSearchParams({
     client_id: config.monday.clientId,
-    redirect_uri: config.monday.redirectUri,
+    redirect_uri: redirectUri,
     state,
   });
+  logger.info('monday', 'OAuth URL generated', { clientId: config.monday.clientId ? 'set' : 'MISSING', redirectUri });
   return `https://auth.monday.com/oauth2/authorize?${params}`;
 }
 
