@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const db = require('./database');
-const greenApi = require('./greenApi');
+const whatsapp = require('./twilio');
 const logger = require('../utils/logger');
 
 const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -203,7 +203,7 @@ async function sendDailySummary() {
 
       const message = `🌙 ערב טוב!\n\n${messageParts.join('\n\n')}\n\nלילה טוב! 😴`;
 
-      await greenApi.sendMessage(phone, message);
+      await whatsapp.sendMessage(phone, message);
 
       // Mark events as summary sent
       for (const event of events) {
@@ -236,7 +236,7 @@ async function checkHourlyReminders() {
       const loc = event.location && event.location !== 'Asia/Jerusalem' ? `\n📍 ${event.location}` : '';
       const message = `⏰ בעוד שעה: ${event.title} ב-${time}${loc}`;
 
-      await greenApi.sendMessage(phone, message);
+      await whatsapp.sendMessage(phone, message);
       await db.markReminderSent(event.id, 'reminder_sent');
       logger.info('reminders', 'Hourly reminder sent', { eventId: event.id, phone });
     }
@@ -257,7 +257,7 @@ async function checkCustomReminders() {
       if (!phone) continue;
 
       const message = `🔔 תזכורת: ${reminder.content}`;
-      await greenApi.sendMessage(phone, message);
+      await whatsapp.sendMessage(phone, message);
       await db.markReminderDone(reminder.id);
       logger.info('reminders', 'Custom reminder sent', { reminderId: reminder.id, phone });
     }

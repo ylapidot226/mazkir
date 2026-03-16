@@ -1,5 +1,5 @@
 const db = require('./database');
-const greenApi = require('./greenApi');
+const greenApi = require('./twilio');
 const logger = require('../utils/logger');
 
 const ADMIN_PHONE = process.env.ADMIN_PHONE || '35795167764@c.us';

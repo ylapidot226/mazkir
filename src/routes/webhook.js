@@ -1,7 +1,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
-const greenApi = require('../services/greenApi');
+const whatsapp = require('../services/twilio');
 const claude = require('../services/claude');
 const db = require('../services/database');
 const { generateConnectToken } = require('./calendar');
@@ -52,29 +52,19 @@ function sanitizeForLike(str) {
 }
 
 /**
- * Verify webhook comes from Green API (#1)
+ * Verify webhook comes from Twilio via X-Twilio-Signature (#1)
  */
 function verifyWebhook(req, res, next) {
-  const webhookToken = config.greenApi.webhookToken;
-
-  // If no token configured, skip verification (but log warning)
-  if (!webhookToken) {
+  // Skip validation in development or if auth token not configured
+  if (process.env.NODE_ENV !== 'production' || !config.twilio.authToken) {
     return next();
   }
 
-  // Green API sends instance ID in the body
-  const instanceId = req.body?.instanceData?.idInstance?.toString();
-  if (instanceId && instanceId === config.greenApi.instanceId) {
+  if (whatsapp.validateWebhook(req)) {
     return next();
   }
 
-  // Also check custom token header if configured
-  const headerToken = req.headers['x-webhook-token'];
-  if (headerToken === webhookToken) {
-    return next();
-  }
-
-  logger.warn('webhook', 'Unauthorized webhook attempt', { ip: req.ip });
+  logger.warn('webhook', 'Unauthorized webhook attempt (invalid Twilio signature)', { ip: req.ip });
   return res.status(403).json({ error: 'Forbidden' });
 }
 
@@ -112,10 +102,10 @@ async function withUserLock(userId, fn) {
 }
 
 router.post('/whatsapp', webhookLimiter, verifyWebhook, async (req, res) => {
-  const idMessage = req.body?.messageData?.idMessage || req.body?.idMessage;
+  const idMessage = req.body?.MessageSid;
   if (isDuplicate(idMessage)) {
     logger.info('webhook', 'Duplicate message skipped', { idMessage });
-    return res.status(200).json({ success: true });
+    return res.status(200).send('');
   }
   try {
     await processWebhook(req.body);
@@ -123,24 +113,15 @@ router.post('/whatsapp', webhookLimiter, verifyWebhook, async (req, res) => {
     logger.error('webhook', 'Error processing webhook', { message: error.message, stack: error.stack });
   }
 
-  return res.status(200).json({ success: true });
+  // Twilio expects empty 200 response (or TwiML)
+  return res.status(200).send('');
 });
 
 async function processWebhook(body) {
-  const parsed = greenApi.parseWebhook(body);
+  const parsed = whatsapp.parseWebhook(body);
   if (!parsed) return;
 
-  const { sender, chatId, senderName, text, isPollUpdate, pollStanzaId, pollVotes, isUnsupportedMedia, mediaType } = parsed;
-
-  // Handle poll vote updates (task completion via poll)
-  if (isPollUpdate) {
-    logger.info('webhook', 'Poll vote received', { sender, pollStanzaId });
-    const user = await db.getUser(sender);
-    if (user) {
-      await handlePollVote(user.id, chatId, pollStanzaId, pollVotes);
-    }
-    return;
-  }
+  const { sender, chatId, senderName, text, isUnsupportedMedia, mediaType } = parsed;
 
   // Handle unsupported media messages
   if (isUnsupportedMedia) {
@@ -156,7 +137,7 @@ async function processWebhook(body) {
         locationMessage: 'מיקומים',
       };
       const label = mediaLabels[mediaType] || 'קבצים';
-      await greenApi.sendMessage(chatId, `אני עדיין לא יודע לקרוא ${label} 🙈\nבינתיים אפשר לכתוב לי בטקסט ואשמח לעזור!`);
+      await whatsapp.sendMessage(chatId, `אני עדיין לא יודע לקרוא ${label} 🙈\nבינתיים אפשר לכתוב לי בטקסט ואשמח לעזור!`);
     }
     return;
   }
@@ -176,15 +157,15 @@ async function processWebhook(body) {
           const { sendWelcomeEmail } = require('../services/email');
           sendWelcomeEmail(pending.email, pending.name || '').catch(() => {});
         }
-        await greenApi.sendMessage(chatId, `✅ ${pending.name} אושר בהצלחה! מייל ברוכים הבאים נשלח.`);
+        await whatsapp.sendMessage(chatId, `✅ ${pending.name} אושר בהצלחה! מייל ברוכים הבאים נשלח.`);
         logger.info('webhook', 'User approved via WhatsApp', { userId: pending.userId, name: pending.name });
       } catch (error) {
-        await greenApi.sendMessage(chatId, `❌ שגיאה באישור: ${error.message}`);
+        await whatsapp.sendMessage(chatId, `❌ שגיאה באישור: ${error.message}`);
       }
       return;
     } else if (normalizedText === 'לא' || normalizedText === 'no') {
       pendingApprovals.delete(sender);
-      await greenApi.sendMessage(chatId, '👌 בוטל, המשתמש לא אושר.');
+      await whatsapp.sendMessage(chatId, '👌 בוטל, המשתמש לא אושר.');
       return;
     }
   }
@@ -193,7 +174,7 @@ async function processWebhook(body) {
   const user = await db.getUser(sender);
 
   if (!user) {
-    await greenApi.sendMessage(
+    await whatsapp.sendMessage(
       chatId,
       `שלום ${(senderName || '').replace(/<[^>]*>/g, '')} 👋\n\nכדי להשתמש במזכיר צריך להירשם קודם באתר:\nhttps://maztary.com\n\nנתראה שם! 😊`
     );
@@ -202,7 +183,7 @@ async function processWebhook(body) {
   }
 
   if (user.status === 'pending') {
-    await greenApi.sendMessage(
+    await whatsapp.sendMessage(
       chatId,
       'הבקשה שלך עדיין ממתינה לאישור ⏳\nנעדכן אותך במייל ברגע שתאושר!'
     );
@@ -222,7 +203,7 @@ async function processWebhook(body) {
       const cleanName = name.replace(/<[^>]*>/g, '').trim();
       const welcome = `היי${cleanName ? ` ${cleanName}` : ''}! 👋\nאני המזכיר האישי שלך.\n\nפשוט כתוב לי מה שצריך לזכור ואני אטפל בשאר!\n\n📅 *אירועים ותזכורות*\nכתוב למשל:\nמחר ב-10 פגישה עם דני\nואני אשמור ואזכיר לך!\n\nאם אין זמן מסוים — פשוט כתוב:\nלקנות מתנה ליוסי\nואני אשאל אם יש זמן.\n\n🔄 *אירועים קבועים*\nלדוגמה:\nכל יום שני אימון ב-18:00\n\n🔔 *תזכורות אוטומטיות*\nכל ערב ב-21:00 סיכום של מה שמתוכנן למחר,\nושעה לפני כל אירוע — תזכורת נוספת.\n\n📋 *רשימות*\nלדוגמה:\nתוסיף לרשימת פסח לקנות מצות.\n\n🛒 *רשימת קניות*\nלדוגמה:\nאני צריך חלב, לחם וביצים.\n\n📆 *סנכרון לוח שנה*\nאפשר לחבר ל-Google Calendar\nאו ל-Apple Calendar.\n\nכדי להתחיל, פשוט כתוב:\nחבר לוח שנה.`;
 
-      await greenApi.sendMessage(chatId, welcome);
+      await whatsapp.sendMessage(chatId, welcome);
       await db.saveMessage(user.id, 'user', text);
       await db.saveMessage(user.id, 'assistant', '[הודעת ברוכים הבאים]');
       return;
@@ -232,7 +213,7 @@ async function processWebhook(body) {
     const safeText = text.length > 1000 ? text.substring(0, 1000) + '...' : text;
 
     // Show typing indicator while AI processes
-    greenApi.sendTyping(chatId).catch(() => {});
+    whatsapp.sendTyping(chatId).catch(() => {});
 
     // Process with AI
     const aiResponse = await claude.processMessage(safeText, history, null, user.timezone || 'Asia/Jerusalem');
@@ -290,49 +271,6 @@ function getCondensedHistory(action, sentResponse) {
     }
     default:
       return sentResponse;
-  }
-}
-
-/**
- * Handle poll vote - mark selected tasks as completed
- */
-async function handlePollVote(userId, chatId, pollStanzaId, votes) {
-  try {
-    const mapping = await db.getPollMapping(userId, pollStanzaId);
-    if (!mapping) return;
-
-    const votedOptions = votes
-      .filter((v) => v.optionVoters && v.optionVoters.length > 0)
-      .map((v) => v.optionName);
-
-    if (votedOptions.length === 0) return;
-
-    let completedCount = 0;
-    for (const itemContent of votedOptions) {
-      const item = mapping.tasks.find((t) => t.content === itemContent);
-      if (item) {
-        if (item.type === 'shopping') {
-          await db.markShoppingDoneById(userId, item.id);
-        } else {
-          await db.completeTask(userId, item.id);
-        }
-        // Complete in connected providers if synced
-        if (item.external_id) {
-          completeTaskInAll(userId, item.external_id, item.source).catch(() => {});
-        }
-        completedCount++;
-      }
-    }
-
-    if (completedCount > 0) {
-      const isShopping = mapping.tasks[0]?.type === 'shopping';
-      const msg = isShopping
-        ? completedCount === 1 ? '✅ פריט אחד סומן כנקנה!' : `✅ ${completedCount} פריטים סומנו כנקנו!`
-        : completedCount === 1 ? '✅ משימה אחת סומנה כבוצעה!' : `✅ ${completedCount} משימות סומנו כבוצעות!`;
-      await greenApi.sendMessage(chatId, msg);
-    }
-  } catch (error) {
-    logger.error('webhook', 'Failed to handle poll vote', { error: error.message });
   }
 }
 
@@ -469,7 +407,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           // Add Claude's contextual response before the list
           msg = `${response}\n\n${msg}`;
         }
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -479,20 +417,17 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         if (tasks.length === 0) {
           const catMsg = category ? ` בקטגוריה "${category}"` : '';
           msg = `אין משימות פתוחות${catMsg} ✅`;
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
         } else if (tasks.length === 1) {
           // Polls need at least 2 options
           msg = `📋 ${category ? `משימות - ${category}` : 'המשימות שלך'}:\n\n• ${tasks[0].content}\n\nכדי לסמן כבוצע כתוב: "ביצעתי ${tasks[0].content}"`;
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
         } else {
           const options = tasks.slice(0, 12).map((t) => t.content);
           const question = category
             ? `📋 משימות - ${category}:`
             : '📋 המשימות שלך (סמן מה בוצע):';
-          const pollResult = await greenApi.sendPoll(chatId, question, options);
-          if (pollResult?.idMessage) {
-            await db.savePollMapping(userId, pollResult.idMessage, tasks.slice(0, 12));
-          }
+          await whatsapp.sendPoll(chatId, question, options);
           msg = question;
         }
         return msg;
@@ -508,7 +443,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           const formatted = entries.map(([cat, count]) => `• ${cat} (${count} משימות)`).join('\n');
           msg = `📋 הרשימות שלך:\n\n${formatted}`;
         }
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -516,7 +451,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const listName = category || content;
         if (!listName) {
           const msg = 'איזו רשימה למחוק? 🤔';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         const count = await db.deleteTasksByCategory(userId, listName);
@@ -526,7 +461,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         } else {
           msg = `לא מצאתי רשימה בשם "${listName}" 🤔`;
         }
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -535,10 +470,10 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         let msg;
         if (list.length === 0) {
           msg = 'רשימת הקניות ריקה! 🛒';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
         } else if (list.length === 1) {
           msg = `🛒 רשימת הקניות:\n\n• ${list[0].item}\n\nכדי לסמן כנקנה כתוב: "קניתי ${list[0].item}"`;
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
         } else {
           // Deduplicate items for poll (polls don't allow duplicate option names)
           const seen = new Set();
@@ -552,16 +487,11 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
 
           if (uniqueList.length < 2) {
             msg = `🛒 רשימת הקניות:\n\n• ${uniqueList[0].item}\n\nכדי לסמן כנקנה כתוב: "קניתי ${uniqueList[0].item}"`;
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
           } else {
             const options = uniqueList.map((s) => s.item);
             const question = '🛒 רשימת הקניות (סמן מה קנית):';
-            const pollResult = await greenApi.sendPoll(chatId, question, options);
-            if (pollResult?.idMessage) {
-              await db.savePollMapping(userId, pollResult.idMessage,
-                uniqueList.map((s) => ({ id: s.id, content: s.item, type: 'shopping' }))
-              );
-            }
+            await whatsapp.sendPoll(chatId, question, options);
             msg = question;
           }
         }
@@ -580,7 +510,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         } else {
           msg = 'לא מצאתי אירוע מתאים למחיקה 🤔';
         }
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -592,7 +522,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         } else {
           msg = 'אין אירועים למחיקה 📅';
         }
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -605,7 +535,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         } else {
           msg = 'לא מצאתי משימה מתאימה למחיקה 🤔';
         }
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -631,7 +561,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         } else {
           msg = 'לא מצאתי אירוע חוזר מתאים 🤔';
         }
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -649,7 +579,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           }).join('\n');
           msg = `🔄 האירועים החוזרים שלך:\n\n${formatted}`;
         }
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -682,23 +612,23 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const p = provider === 'google' ? 'g' : provider === 'apple' ? 'a' : 'x';
         const shortUrl = `https://maztary.com/c/${token}/${p}`;
         const label = provider === 'apple' ? '🍎 Apple Calendar' : '📗 Google Calendar';
-        await greenApi.sendMessage(chatId, `לחץ על הלינק לחיבור ${label}:`);
-        await greenApi.sendMessage(chatId, shortUrl);
+        await whatsapp.sendMessage(chatId, `לחץ על הלינק לחיבור ${label}:`);
+        await whatsapp.sendMessage(chatId, shortUrl);
         return shortUrl;
       }
 
       case 'connect_monday': {
         const token = await generateConnectToken(userId);
         const shortUrl = `https://maztary.com/c/${token}/m`;
-        await greenApi.sendMessage(chatId, `לחיבור Monday לחץ על הלינק *מהמחשב* (Monday לא תומך בהתחברות מהטלפון):`);
-        await greenApi.sendMessage(chatId, shortUrl);
+        await whatsapp.sendMessage(chatId, `לחיבור Monday לחץ על הלינק *מהמחשב* (Monday לא תומך בהתחברות מהטלפון):`);
+        await whatsapp.sendMessage(chatId, shortUrl);
         return shortUrl;
       }
 
       case 'disconnect_monday': {
         await db.deleteCalendarConnection(userId, 'monday');
         const msg = '✅ Monday.com נותק בהצלחה!';
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -706,7 +636,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const conn = await db.getCalendarConnection(userId, 'monday');
         if (!conn) {
           const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" כדי להתחבר 🔗';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         try {
@@ -714,17 +644,17 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           const boards = await monday.getBoards(access_token);
           if (boards.length === 0) {
             const msg = 'לא מצאתי בורדים בחשבון Monday שלך 📋';
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
             return msg;
           }
           const formatted = boards.map((b, i) => `${i + 1}. ${b.name}`).join('\n');
           const msg = `📋 הבורדים שלך ב-Monday:\n\n${formatted}\n\nכדי לבחור בורד כתוב "בחר בורד" ואת המספר`;
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         } catch (error) {
           logger.error('webhook', 'Monday boards failed', { error: error.message });
           const msg = 'שגיאה בגישה ל-Monday. נסה להתחבר מחדש עם "חבר מאנדיי" 🔄';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
       }
@@ -733,7 +663,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const conn = await db.getCalendarConnection(userId, 'monday');
         if (!conn) {
           const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" כדי להתחבר 🔗';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         try {
@@ -749,17 +679,17 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           }
           if (!board) {
             const msg = `לא מצאתי בורד "${content}". כתוב "תראה בורדים" כדי לראות את הרשימה`;
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
             return msg;
           }
           await db.saveMondayPreferences(userId, board.id, board.name);
           const msg = `✅ בורד "${board.name}" נבחר כברירת מחדל!\n\nעכשיו אפשר:\n• "תראה פריטים" - רשימת הפריטים\n• "תוסיף פריט: שם" - הוספת פריט חדש\n• "חפש במאנדיי: טקסט" - חיפוש`;
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         } catch (error) {
           logger.error('webhook', 'Monday select board failed', { error: error.message });
           const msg = 'שגיאה בבחירת בורד 🤔';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
       }
@@ -768,7 +698,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const conn = await db.getCalendarConnection(userId, 'monday');
         if (!conn) {
           const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         try {
@@ -777,13 +707,13 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           const boardId = aiResponse.board_id || prefs?.default_board_id;
           if (!boardId) {
             const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
             return msg;
           }
           const items = await monday.getBoardItems(access_token, boardId, 20);
           if (items.length === 0) {
             const msg = `אין פריטים בבורד "${prefs?.default_board_name || boardId}" 📋`;
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
             return msg;
           }
           const formatted = items.map((item) => {
@@ -796,12 +726,12 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           }).join('\n');
           const boardName = prefs?.default_board_name || 'Monday';
           const msg = `📋 ${boardName}:\n\n${formatted}`;
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         } catch (error) {
           logger.error('webhook', 'Monday items failed', { error: error.message });
           const msg = 'שגיאה בטעינת פריטים מ-Monday 🤔';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
       }
@@ -810,7 +740,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const conn = await db.getCalendarConnection(userId, 'monday');
         if (!conn) {
           const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         try {
@@ -819,7 +749,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           const boardId = aiResponse.board_id || prefs?.default_board_id;
           if (!boardId) {
             const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
             return msg;
           }
           const groupId = aiResponse.group_id || null;
@@ -836,7 +766,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const conn = await db.getCalendarConnection(userId, 'monday');
         if (!conn) {
           const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         try {
@@ -845,7 +775,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           const boardId = aiResponse.board_id || prefs?.default_board_id;
           if (!boardId) {
             const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" 📋';
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
             return msg;
           }
           // Find the item by name
@@ -880,7 +810,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const conn = await db.getCalendarConnection(userId, 'monday');
         if (!conn) {
           const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         try {
@@ -889,7 +819,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           const boardId = aiResponse.board_id || prefs?.default_board_id;
           if (!boardId) {
             const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
             return msg;
           }
           if (!aiResponse.item_name) {
@@ -915,7 +845,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const conn = await db.getCalendarConnection(userId, 'monday');
         if (!conn) {
           const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         try {
@@ -925,7 +855,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           const results = await monday.searchItems(access_token, content, boardId);
           if (results.length === 0) {
             const msg = `לא מצאתי תוצאות ל-"${content}" 🔍`;
-            await greenApi.sendMessage(chatId, msg);
+            await whatsapp.sendMessage(chatId, msg);
             return msg;
           }
           const formatted = results.map((item) => {
@@ -935,12 +865,12 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
             return `• ${item.name}${statusText}${boardLabel}`;
           }).join('\n');
           const msg = `🔍 תוצאות חיפוש "${content}":\n\n${formatted}`;
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         } catch (error) {
           logger.error('webhook', 'Monday search failed', { error: error.message });
           const msg = 'שגיאה בחיפוש ב-Monday 🤔';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
       }
@@ -949,7 +879,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const conn = await db.getCalendarConnection(userId, 'monday');
         if (!conn) {
           const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         try {
@@ -976,11 +906,11 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         if (provider) {
           await db.deleteCalendarConnection(userId, provider);
           const msg = `✅ לוח השנה של ${provider === 'google' ? 'Google' : 'Apple'} נותק בהצלחה!`;
-          await greenApi.sendMessage(chatId, msg);
+          await whatsapp.sendMessage(chatId, msg);
           return msg;
         }
         const msg = 'איזה לוח שנה לנתק? Google או Apple?';
-        await greenApi.sendMessage(chatId, msg);
+        await whatsapp.sendMessage(chatId, msg);
         return msg;
       }
 
@@ -1004,13 +934,13 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
 
     const finalResponse = response || (action !== 'chat' ? 'בוצע! ✅' : null);
     if (finalResponse) {
-      await greenApi.sendMessage(chatId, finalResponse);
+      await whatsapp.sendMessage(chatId, finalResponse);
     }
     return finalResponse || null;
   } catch (error) {
     logger.error('webhook', 'Failed to execute action', { action, content, category, error: error.message, stack: error.stack });
     const errMsg = 'אופס, משהו השתבש 😅 אפשר לנסות שוב?';
-    await greenApi.sendMessage(chatId, errMsg);
+    await whatsapp.sendMessage(chatId, errMsg);
     return errMsg;
   }
 }

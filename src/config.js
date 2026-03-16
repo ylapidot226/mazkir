@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 // Validate critical env vars at startup
-const required = ['OPENAI_API_KEY', 'SUPABASE_URL', 'SUPABASE_KEY', 'GREEN_API_INSTANCE_ID', 'GREEN_API_TOKEN'];
+const required = ['OPENAI_API_KEY', 'SUPABASE_URL', 'SUPABASE_KEY'];
 for (const key of required) {
   if (!process.env[key]) {
     throw new Error(`Missing required environment variable: ${key}`);
@@ -9,11 +9,10 @@ for (const key of required) {
 }
 
 module.exports = {
-  greenApi: {
-    instanceId: process.env.GREEN_API_INSTANCE_ID,
-    token: process.env.GREEN_API_TOKEN,
-    baseUrl: `https://api.green-api.com/waInstance${process.env.GREEN_API_INSTANCE_ID}`,
-    webhookToken: process.env.WEBHOOK_TOKEN || '',
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID,
+    authToken: process.env.TWILIO_AUTH_TOKEN,
+    whatsappNumber: process.env.TWILIO_WHATSAPP_NUMBER || '+13502251169',
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
@@ -28,7 +27,7 @@ module.exports = {
     fromEmail: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
   },
   whatsapp: {
-    botNumber: process.env.WHATSAPP_BOT_NUMBER,
+    botNumber: process.env.WHATSAPP_BOT_NUMBER || process.env.TWILIO_WHATSAPP_NUMBER?.replace('+', '') || '13502251169',
   },
   admin: {
     password: process.env.ADMIN_PASSWORD,
