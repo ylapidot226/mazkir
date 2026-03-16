@@ -7,6 +7,7 @@ const logger = require('./utils/logger');
 const webhookRoutes = require('./routes/webhook');
 const adminRoutes = require('./routes/admin');
 const { router: calendarRoutes } = require('./routes/calendar');
+const mondayRoutes = require('./routes/monday');
 const { runAllReminders } = require('./services/reminders');
 
 const app = express();
@@ -44,10 +45,14 @@ app.get(config.admin.path, (req, res) => {
 app.use('/webhook', webhookRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/calendar', calendarRoutes);
+app.use('/monday', mondayRoutes);
 
 // Short URL redirect for calendar connect (path-based to avoid WhatsApp link breaking)
 app.get('/c/:token/:p', (req, res) => {
   const { token, p } = req.params;
+  if (p === 'm') {
+    return res.redirect(`/monday/auth?token=${token}`);
+  }
   const provider = p === 'g' ? 'google' : p === 'a' ? 'apple' : '';
   res.redirect(`/calendar/connect?token=${token}&provider=${provider}`);
 });

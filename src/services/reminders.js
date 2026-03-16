@@ -98,6 +98,10 @@ async function generateRecurringEvents() {
   }
 }
 
+// Track which task-only users already received today's summary (no DB flag for tasks)
+let taskOnlySummaryDate = '';
+const taskOnlySummarySent = new Set();
+
 /**
  * Send daily evening summary at 9:00 PM to all active users (for tomorrow)
  */
@@ -149,27 +153,68 @@ async function sendDailySummary() {
       });
     }
 
-    for (const [phone, events] of Object.entries(eventsByUser)) {
+    // Get open tasks for all users to include in daily summary
+    const allTasks = await db.getOpenTasksAllUsers();
+    const tasksByUser = {};
+    for (const task of allTasks) {
+      const phone = task.users?.phone_number;
+      if (!phone) continue;
+      if (!tasksByUser[phone]) tasksByUser[phone] = [];
+      tasksByUser[phone].push(task);
+    }
+
+    // Reset task-only tracking on new day
+    const todayStr = ilTime.toISOString().substring(0, 10);
+    if (taskOnlySummaryDate !== todayStr) {
+      taskOnlySummaryDate = todayStr;
+      taskOnlySummarySent.clear();
+    }
+
+    // Collect all phones that have either events or tasks
+    const allPhones = new Set([...Object.keys(eventsByUser), ...Object.keys(tasksByUser)]);
+
+    for (const phone of allPhones) {
+      const events = eventsByUser[phone] || [];
+      const tasks = tasksByUser[phone] || [];
+
       // Check if we already sent this summary
-      const alreadySent = events.some((e) => e.day_summary_sent);
+      const alreadySent = events.length > 0
+        ? events.some((e) => e.day_summary_sent)
+        : taskOnlySummarySent.has(phone);
       if (alreadySent) continue;
 
-      const eventLines = events.map((e) => {
-        const time = e.time_display || formatTime(e.datetime);
-        const loc = e.location && e.location !== 'Asia/Jerusalem' ? ` 📍 ${e.location}` : '';
-        return `• ${time} - ${e.title}${loc}`;
-      }).join('\n');
+      let messageParts = [];
 
-      const message = `🌙 ערב טוב! הנה מה שמחכה לך מחר:\n\n${eventLines}\n\nלילה טוב! 😴`;
+      if (events.length > 0) {
+        const eventLines = events.map((e) => {
+          const time = e.time_display || formatTime(e.datetime);
+          const loc = e.location && e.location !== 'Asia/Jerusalem' ? ` 📍 ${e.location}` : '';
+          return `• ${time} - ${e.title}${loc}`;
+        }).join('\n');
+        messageParts.push(`📅 מחר:\n\n${eventLines}`);
+      }
+
+      if (tasks.length > 0) {
+        const taskLines = tasks.map((t) => `• ${t.content}${t.category && t.category !== 'כללי' ? ` (${t.category})` : ''}`).join('\n');
+        messageParts.push(`📋 משימות פתוחות:\n\n${taskLines}`);
+      }
+
+      if (messageParts.length === 0) continue;
+
+      const message = `🌙 ערב טוב!\n\n${messageParts.join('\n\n')}\n\nלילה טוב! 😴`;
 
       await greenApi.sendMessage(phone, message);
 
       // Mark events as summary sent
       for (const event of events) {
-        await db.markReminderSent(event.id, 'day_summary_sent');
+        if (event.id) await db.markReminderSent(event.id, 'day_summary_sent');
+      }
+      // Track task-only users in memory
+      if (events.length === 0) {
+        taskOnlySummarySent.add(phone);
       }
 
-      logger.info('reminders', 'Daily summary sent', { phone, eventCount: events.length });
+      logger.info('reminders', 'Daily summary sent', { phone, eventCount: events.length, taskCount: tasks.length });
     }
   } catch (error) {
     logger.error('reminders', 'Failed to send daily summary', error);

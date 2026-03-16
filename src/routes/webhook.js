@@ -6,6 +6,7 @@ const claude = require('../services/claude');
 const db = require('../services/database');
 const { generateConnectToken } = require('./calendar');
 const { pushEventToCalendars, deleteEventFromCalendars, pushTaskToAll, pushShoppingToAppleReminders, completeTaskInAll } = require('../services/calendarSync');
+const monday = require('../services/monday');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -219,7 +220,7 @@ async function processWebhook(body) {
     if (history.length === 0) {
       const name = user.name || senderName || '';
       const cleanName = name.replace(/<[^>]*>/g, '').trim();
-      const welcome = `היי${cleanName ? ` ${cleanName}` : ''}! 👋\nאני המזכיר האישי שלך.\n\nאני יכול לעזור לך לנהל יומן, תזכורות, משימות ורשימות — פשוט על-ידי הודעה קצרה.\n\n📅 *יומן ואירועים*\nכתוב למשל:\nמחר ב-10 פגישה עם דני\nואני אשמור את האירוע ביומן.\n\nרוצה לראות מה מתוכנן?\nכתוב:\nמה יש לי מחר\nואציג לך את כל האירועים.\n\n🔄 *אירועים קבועים*\nאפשר להגדיר אירועים שחוזרים.\nלדוגמה:\nכל יום שני אימון ב-18:00\nואני אוסיף אותו אוטומטית.\n\n🔔 *תזכורות*\nאני שולח סיכום יומי כל ערב ב-21:00,\nותזכורת שעה לפני כל אירוע.\n\nצריך תזכורת מיוחדת?\nכתוב:\nתזכיר לי מחר ב-15:00 להתקשר לרופא.\n\n📋 *משימות ורשימות*\nאפשר להוסיף משימות ורשימות.\nלדוגמה:\nתוסיף לרשימת פסח לקנות מצות.\n\n🛒 *רשימת קניות*\nאפשר גם להוסיף קניות.\nלדוגמה:\nאני צריך חלב, לחם וביצים.\n\n📆 *סנכרון לוח שנה*\nאפשר לחבר ל-Google Calendar\nאו ל-Apple Calendar.\n\nכדי להתחיל, פשוט כתוב:\nחבר לוח שנה.`;
+      const welcome = `היי${cleanName ? ` ${cleanName}` : ''}! 👋\nאני המזכיר האישי שלך.\n\nפשוט כתוב לי מה שצריך לזכור ואני אטפל בשאר!\n\n📅 *אירועים ותזכורות*\nכתוב למשל:\nמחר ב-10 פגישה עם דני\nואני אשמור ואזכיר לך!\n\nאם אין זמן מסוים — פשוט כתוב:\nלקנות מתנה ליוסי\nואני אשאל אם יש זמן.\n\n🔄 *אירועים קבועים*\nלדוגמה:\nכל יום שני אימון ב-18:00\n\n🔔 *תזכורות אוטומטיות*\nכל ערב ב-21:00 סיכום של מה שמתוכנן למחר,\nושעה לפני כל אירוע — תזכורת נוספת.\n\n📋 *רשימות*\nלדוגמה:\nתוסיף לרשימת פסח לקנות מצות.\n\n🛒 *רשימת קניות*\nלדוגמה:\nאני צריך חלב, לחם וביצים.\n\n📆 *סנכרון לוח שנה*\nאפשר לחבר ל-Google Calendar\nאו ל-Apple Calendar.\n\nכדי להתחיל, פשוט כתוב:\nחבר לוח שנה.`;
 
       await greenApi.sendMessage(chatId, welcome);
       await db.saveMessage(user.id, 'user', text);
@@ -274,6 +275,19 @@ function getCondensedHistory(action, sentResponse) {
       return '[שלחתי קישור לחיבור לוח שנה]';
     case 'disconnect_calendar':
       return '[ניתקתי לוח שנה]';
+    case 'connect_monday':
+      return '[שלחתי קישור לחיבור Monday.com]';
+    case 'disconnect_monday':
+      return '[ניתקתי Monday.com]';
+    case 'monday_boards':
+    case 'monday_items':
+    case 'monday_search': {
+      const maxLen = 400;
+      if (sentResponse.length > maxLen) {
+        return sentResponse.substring(0, maxLen) + '...';
+      }
+      return sentResponse;
+    }
     default:
       return sentResponse;
   }
@@ -326,7 +340,8 @@ async function handlePollVote(userId, chatId, pollStanzaId, votes) {
  * Execute the action returned by AI
  */
 async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusalem') {
-  const { action, category, content, datetime, location, items, response } = aiResponse;
+  const { action, category, content, datetime, location, items } = aiResponse;
+  let { response } = aiResponse;
 
   try {
     switch (action) {
@@ -441,11 +456,17 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
         }
 
+        // Also show open tasks so user sees everything in one place
+        const tasks = await db.getTasks(userId);
+        if (tasks.length > 0) {
+          const taskLines = tasks.map((t) => `• ${t.content}${t.category && t.category !== 'כללי' ? ` (${t.category})` : ''}`).join('\n');
+          msg += `${msg ? '\n\n' : ''}📋 משימות פתוחות:\n\n${taskLines}`;
+        }
+
         if (!msg) {
-          const emptyLabels = { today: 'אין לך אירועים היום', tomorrow: 'אין לך אירועים מחר', specific_day: 'אין לך אירועים ביום הזה', week: 'אין לך אירועים השבוע' };
-          msg = response || (emptyLabels[range] || 'אין לך אירועים') + ' 📅';
+          msg = response || 'אין לך שום דבר מתוכנן 👍';
         } else if (response) {
-          // Add Claude's contextual response before the event list
+          // Add Claude's contextual response before the list
           msg = `${response}\n\n${msg}`;
         }
         await greenApi.sendMessage(chatId, msg);
@@ -644,13 +665,16 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         await db.clearShoppingList(userId);
         break;
 
-      case 'add_reminder':
-        if (isValidDatetime(datetime)) { // (#10)
-          await db.addReminder(userId, content, datetime);
+      case 'add_reminder': {
+        // Legacy: convert reminders to events so they get auto-reminders + calendar sync
+        if (isValidDatetime(datetime)) {
+          const ev = await db.addEvent(userId, content, datetime, location);
+          if (ev) pushEventToCalendars(userId, ev.id).catch(() => {});
         } else {
-          response = 'לא הצלחתי לזהות תאריך ושעה לתזכורת. נסה שוב 🤔';
+          response = 'לא הצלחתי לזהות תאריך ושעה. נסה שוב 🤔';
         }
         break;
+      }
 
       case 'connect_calendar': {
         const provider = content?.toLowerCase() || '';
@@ -663,8 +687,292 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         return shortUrl;
       }
 
+      case 'connect_monday': {
+        const token = await generateConnectToken(userId);
+        const shortUrl = `https://maztary.com/c/${token}/m`;
+        await greenApi.sendMessage(chatId, `לחץ על הלינק לחיבור Monday.com:`);
+        await greenApi.sendMessage(chatId, shortUrl);
+        return shortUrl;
+      }
+
+      case 'disconnect_monday': {
+        await db.deleteCalendarConnection(userId, 'monday');
+        const msg = '✅ Monday.com נותק בהצלחה!';
+        await greenApi.sendMessage(chatId, msg);
+        return msg;
+      }
+
+      case 'monday_boards': {
+        const conn = await db.getCalendarConnection(userId, 'monday');
+        if (!conn) {
+          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" כדי להתחבר 🔗';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const { access_token } = JSON.parse(conn.credentials);
+          const boards = await monday.getBoards(access_token);
+          if (boards.length === 0) {
+            const msg = 'לא מצאתי בורדים בחשבון Monday שלך 📋';
+            await greenApi.sendMessage(chatId, msg);
+            return msg;
+          }
+          const formatted = boards.map((b, i) => `${i + 1}. ${b.name}`).join('\n');
+          const msg = `📋 הבורדים שלך ב-Monday:\n\n${formatted}\n\nכדי לבחור בורד כתוב "בחר בורד" ואת המספר`;
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        } catch (error) {
+          logger.error('webhook', 'Monday boards failed', { error: error.message });
+          const msg = 'שגיאה בגישה ל-Monday. נסה להתחבר מחדש עם "חבר מאנדיי" 🔄';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+      }
+
+      case 'monday_select_board': {
+        const conn = await db.getCalendarConnection(userId, 'monday');
+        if (!conn) {
+          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" כדי להתחבר 🔗';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const { access_token } = JSON.parse(conn.credentials);
+          const boards = await monday.getBoards(access_token);
+          const boardNum = parseInt(content);
+          let board;
+          if (!isNaN(boardNum) && boardNum >= 1 && boardNum <= boards.length) {
+            board = boards[boardNum - 1];
+          } else {
+            // Try to find by name
+            board = boards.find(b => b.name.includes(content));
+          }
+          if (!board) {
+            const msg = `לא מצאתי בורד "${content}". כתוב "תראה בורדים" כדי לראות את הרשימה`;
+            await greenApi.sendMessage(chatId, msg);
+            return msg;
+          }
+          await db.saveMondayPreferences(userId, board.id, board.name);
+          const msg = `✅ בורד "${board.name}" נבחר כברירת מחדל!\n\nעכשיו אפשר:\n• "תראה פריטים" - רשימת הפריטים\n• "תוסיף פריט: שם" - הוספת פריט חדש\n• "חפש במאנדיי: טקסט" - חיפוש`;
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        } catch (error) {
+          logger.error('webhook', 'Monday select board failed', { error: error.message });
+          const msg = 'שגיאה בבחירת בורד 🤔';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+      }
+
+      case 'monday_items': {
+        const conn = await db.getCalendarConnection(userId, 'monday');
+        if (!conn) {
+          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const { access_token } = JSON.parse(conn.credentials);
+          const prefs = await db.getMondayPreferences(userId);
+          const boardId = aiResponse.board_id || prefs?.default_board_id;
+          if (!boardId) {
+            const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
+            await greenApi.sendMessage(chatId, msg);
+            return msg;
+          }
+          const items = await monday.getBoardItems(access_token, boardId, 20);
+          if (items.length === 0) {
+            const msg = `אין פריטים בבורד "${prefs?.default_board_name || boardId}" 📋`;
+            await greenApi.sendMessage(chatId, msg);
+            return msg;
+          }
+          const formatted = items.map((item) => {
+            const status = item.column_values.find(c => c.type === 'status');
+            const person = item.column_values.find(c => c.type === 'person');
+            const statusText = status?.text ? ` [${status.text}]` : '';
+            const personText = person?.text ? ` 👤 ${person.text}` : '';
+            const group = item.group?.title ? ` (${item.group.title})` : '';
+            return `• ${item.name}${statusText}${personText}${group}`;
+          }).join('\n');
+          const boardName = prefs?.default_board_name || 'Monday';
+          const msg = `📋 ${boardName}:\n\n${formatted}`;
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        } catch (error) {
+          logger.error('webhook', 'Monday items failed', { error: error.message });
+          const msg = 'שגיאה בטעינת פריטים מ-Monday 🤔';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+      }
+
+      case 'monday_create_item': {
+        const conn = await db.getCalendarConnection(userId, 'monday');
+        if (!conn) {
+          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const { access_token } = JSON.parse(conn.credentials);
+          const prefs = await db.getMondayPreferences(userId);
+          const boardId = aiResponse.board_id || prefs?.default_board_id;
+          if (!boardId) {
+            const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
+            await greenApi.sendMessage(chatId, msg);
+            return msg;
+          }
+          const groupId = aiResponse.group_id || null;
+          const newItem = await monday.createItem(access_token, boardId, content, groupId);
+          break; // response will be sent by the default response handler
+        } catch (error) {
+          logger.error('webhook', 'Monday create item failed', { error: error.message });
+          response = 'שגיאה ביצירת פריט ב-Monday 🤔';
+        }
+        break;
+      }
+
+      case 'monday_update_status': {
+        const conn = await db.getCalendarConnection(userId, 'monday');
+        if (!conn) {
+          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const { access_token } = JSON.parse(conn.credentials);
+          const prefs = await db.getMondayPreferences(userId);
+          const boardId = aiResponse.board_id || prefs?.default_board_id;
+          if (!boardId) {
+            const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" 📋';
+            await greenApi.sendMessage(chatId, msg);
+            return msg;
+          }
+          // Find the item by name
+          const items = await monday.searchItems(access_token, aiResponse.item_name || content, boardId);
+          if (items.length === 0) {
+            response = `לא מצאתי פריט "${aiResponse.item_name || content}" בבורד 🤔`;
+            break;
+          }
+          const item = items[0];
+          // Find the status column
+          const boardDetails = await monday.getBoardDetails(access_token, boardId);
+          const statusCol = boardDetails?.columns?.find(c => c.type === 'status');
+          if (!statusCol) {
+            response = 'לא מצאתי עמודת סטטוס בבורד 🤔';
+            break;
+          }
+          const statusValue = aiResponse.status_value;
+          if (!statusValue) {
+            response = 'לא הבנתי לאיזה סטטוס לשנות 🤔';
+            break;
+          }
+          await monday.updateColumnValue(access_token, boardId, item.id, statusCol.id, statusValue);
+          break;
+        } catch (error) {
+          logger.error('webhook', 'Monday update status failed', { error: error.message });
+          response = 'שגיאה בעדכון סטטוס ב-Monday 🤔';
+        }
+        break;
+      }
+
+      case 'monday_add_update': {
+        const conn = await db.getCalendarConnection(userId, 'monday');
+        if (!conn) {
+          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const { access_token } = JSON.parse(conn.credentials);
+          const prefs = await db.getMondayPreferences(userId);
+          const boardId = aiResponse.board_id || prefs?.default_board_id;
+          if (!boardId) {
+            const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
+            await greenApi.sendMessage(chatId, msg);
+            return msg;
+          }
+          if (!aiResponse.item_name) {
+            response = 'לאיזה פריט להוסיף עדכון? 🤔';
+            break;
+          }
+          // Find the item
+          const items = await monday.searchItems(access_token, aiResponse.item_name, boardId);
+          if (items.length === 0) {
+            response = `לא מצאתי פריט "${aiResponse.item_name}" 🤔`;
+            break;
+          }
+          await monday.addUpdate(access_token, items[0].id, aiResponse.update_text || content);
+          break;
+        } catch (error) {
+          logger.error('webhook', 'Monday add update failed', { error: error.message });
+          response = 'שגיאה בהוספת עדכון ב-Monday 🤔';
+        }
+        break;
+      }
+
+      case 'monday_search': {
+        const conn = await db.getCalendarConnection(userId, 'monday');
+        if (!conn) {
+          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const { access_token } = JSON.parse(conn.credentials);
+          const prefs = await db.getMondayPreferences(userId);
+          const boardId = aiResponse.board_id || prefs?.default_board_id || null;
+          const results = await monday.searchItems(access_token, content, boardId);
+          if (results.length === 0) {
+            const msg = `לא מצאתי תוצאות ל-"${content}" 🔍`;
+            await greenApi.sendMessage(chatId, msg);
+            return msg;
+          }
+          const formatted = results.map((item) => {
+            const status = item.column_values?.find(c => c.type === 'status');
+            const statusText = status?.text ? ` [${status.text}]` : '';
+            const boardLabel = item.board_name ? ` (${item.board_name})` : '';
+            return `• ${item.name}${statusText}${boardLabel}`;
+          }).join('\n');
+          const msg = `🔍 תוצאות חיפוש "${content}":\n\n${formatted}`;
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        } catch (error) {
+          logger.error('webhook', 'Monday search failed', { error: error.message });
+          const msg = 'שגיאה בחיפוש ב-Monday 🤔';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+      }
+
+      case 'monday_delete_item': {
+        const conn = await db.getCalendarConnection(userId, 'monday');
+        if (!conn) {
+          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
+          await greenApi.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const { access_token } = JSON.parse(conn.credentials);
+          const prefs = await db.getMondayPreferences(userId);
+          const boardId = aiResponse.board_id || prefs?.default_board_id;
+          const items = await monday.searchItems(access_token, content, boardId);
+          if (items.length === 0) {
+            response = `לא מצאתי פריט "${content}" 🤔`;
+            break;
+          }
+          await monday.deleteItem(access_token, items[0].id);
+          break;
+        } catch (error) {
+          logger.error('webhook', 'Monday delete item failed', { error: error.message });
+          response = 'שגיאה במחיקת פריט ב-Monday 🤔';
+        }
+        break;
+      }
+
       case 'disconnect_calendar': {
-        const provider = content?.includes('google') ? 'google' : content?.includes('apple') ? 'apple' : null;
+        const dcContent = content?.toLowerCase() || '';
+        const provider = dcContent.includes('google') ? 'google' : dcContent.includes('apple') ? 'apple' : null;
         if (provider) {
           await db.deleteCalendarConnection(userId, provider);
           const msg = `✅ לוח השנה של ${provider === 'google' ? 'Google' : 'Apple'} נותק בהצלחה!`;

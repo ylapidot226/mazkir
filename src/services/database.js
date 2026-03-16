@@ -1095,6 +1095,57 @@ async function markEventPushed(eventId, externalId, source) {
   if (error) logger.error('database', 'Failed to mark event pushed', error);
 }
 
+// ---- Monday.com Preferences ----
+
+async function getMondayPreferences(userId) {
+  const { data, error } = await supabase
+    .from('monday_preferences')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (error && error.code !== 'PGRST116') {
+    logger.error('database', 'Failed to get Monday preferences', error);
+  }
+  return data;
+}
+
+async function saveMondayPreferences(userId, boardId, boardName) {
+  const existing = await getMondayPreferences(userId);
+  if (existing) {
+    const { error } = await supabase
+      .from('monday_preferences')
+      .update({ default_board_id: boardId, default_board_name: boardName })
+      .eq('id', existing.id);
+    if (error) {
+      logger.error('database', 'Failed to update Monday preferences', error);
+      throw error;
+    }
+  } else {
+    const { error } = await supabase
+      .from('monday_preferences')
+      .insert({ user_id: userId, default_board_id: boardId, default_board_name: boardName });
+    if (error) {
+      logger.error('database', 'Failed to save Monday preferences', error);
+      throw error;
+    }
+  }
+}
+
+async function getOpenTasksAllUsers() {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*, users(phone_number, status)')
+    .eq('completed', false)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    logger.error('database', 'Failed to get open tasks for all users', error);
+    return [];
+  }
+  return (data || []).filter((t) => t.users?.status === 'active');
+}
+
 module.exports = {
   supabase,
   getUser,
@@ -1169,4 +1220,7 @@ module.exports = {
   markShoppingPushed,
   getStartOfToday,
   getUserTimezone,
+  getOpenTasksAllUsers,
+  getMondayPreferences,
+  saveMondayPreferences,
 };

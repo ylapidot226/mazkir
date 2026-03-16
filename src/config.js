@@ -39,6 +39,11 @@ module.exports = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/calendar/google/callback',
   },
+  monday: {
+    clientId: process.env.MONDAY_CLIENT_ID || '',
+    clientSecret: process.env.MONDAY_CLIENT_SECRET || '',
+    redirectUri: process.env.MONDAY_REDIRECT_URI || 'http://localhost:3000/monday/callback',
+  },
   cron: {
     secret: process.env.CRON_SECRET || '',
   },

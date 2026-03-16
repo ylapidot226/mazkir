@@ -78,7 +78,7 @@ CREATE TABLE recurring_events (
 CREATE TABLE calendar_connections (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  provider TEXT NOT NULL CHECK (provider IN ('google', 'apple')),
+  provider TEXT NOT NULL CHECK (provider IN ('google', 'apple', 'monday')),
   credentials TEXT NOT NULL,
   calendar_id TEXT DEFAULT 'primary',
   sync_token TEXT,
