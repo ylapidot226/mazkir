@@ -634,7 +634,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         const token = await generateConnectToken(userId);
         const p = provider === 'google' ? 'g' : provider === 'apple' ? 'a' : 'x';
         const shortUrl = `https://maztary.com/c/${token}/${p}`;
-        const label = provider === 'apple' ? '🍎 Apple Calendar' : '📗 Google Calendar';
+        const label = provider === 'apple' ? '🍎 Apple Calendar' : '📗 Google';
         await whatsapp.sendMessage(chatId, `לחץ על הלינק לחיבור ${label}:`);
         await whatsapp.sendMessage(chatId, shortUrl);
         return shortUrl;
