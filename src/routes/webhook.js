@@ -7,6 +7,8 @@ const db = require('../services/database');
 const { generateConnectToken } = require('./calendar');
 const { pushEventToCalendars, deleteEventFromCalendars, pushTaskToAll, pushShoppingToAppleReminders, completeTaskInAll } = require('../services/calendarSync');
 const monday = require('../services/monday');
+const googleDrive = require('../services/googleDrive');
+const gmail = require('../services/gmail');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -267,6 +269,20 @@ function getCondensedHistory(action, sentResponse) {
       return '[שלחתי קישור לחיבור Monday.com]';
     case 'disconnect_monday':
       return '[ניתקתי Monday.com]';
+    case 'drive_search':
+    case 'drive_recent':
+    case 'gmail_list':
+    case 'gmail_read': {
+      const maxLen = 400;
+      if (sentResponse.length > maxLen) {
+        return sentResponse.substring(0, maxLen) + '...';
+      }
+      return sentResponse;
+    }
+    case 'gmail_send':
+      return '[שלחתי מייל]';
+    case 'gmail_reply':
+      return '[הגבתי למייל]';
     case 'monday_boards':
     case 'monday_items':
     case 'monday_search': {
@@ -903,6 +919,197 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         } catch (error) {
           logger.error('webhook', 'Monday delete item failed', { error: error.message });
           response = 'שגיאה במחיקת פריט ב-Monday 🤔';
+        }
+        break;
+      }
+
+      case 'drive_search': {
+        const conn = await db.getCalendarConnection(userId, 'google');
+        if (!conn) {
+          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const credentials = JSON.parse(conn.credentials);
+          const files = await googleDrive.searchFiles(credentials, content || '');
+          if (files.length === 0) {
+            const msg = `לא מצאתי קבצים עבור "${content}" 🔍`;
+            await whatsapp.sendMessage(chatId, msg);
+            return msg;
+          }
+          const MIME_LABELS = {
+            'application/vnd.google-apps.document': '📄 מסמך',
+            'application/vnd.google-apps.spreadsheet': '📊 גיליון',
+            'application/vnd.google-apps.presentation': '📽️ מצגת',
+            'application/vnd.google-apps.folder': '📁 תיקיה',
+            'application/pdf': '📕 PDF',
+          };
+          const formatted = files.map((f) => {
+            const type = MIME_LABELS[f.mimeType] || '📎 קובץ';
+            return `• ${type} ${f.name}\n  ${f.link || ''}`;
+          }).join('\n');
+          const msg = `🔍 תוצאות חיפוש "${content}":\n\n${formatted}`;
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        } catch (error) {
+          logger.error('webhook', 'Drive search failed', { error: error.message });
+          const msg = 'שגיאה בחיפוש בדרייב 🤔';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+      }
+
+      case 'drive_recent': {
+        const conn = await db.getCalendarConnection(userId, 'google');
+        if (!conn) {
+          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const credentials = JSON.parse(conn.credentials);
+          const files = await googleDrive.listRecentFiles(credentials);
+          if (files.length === 0) {
+            const msg = 'לא מצאתי קבצים בדרייב 📂';
+            await whatsapp.sendMessage(chatId, msg);
+            return msg;
+          }
+          const MIME_LABELS = {
+            'application/vnd.google-apps.document': '📄 מסמך',
+            'application/vnd.google-apps.spreadsheet': '📊 גיליון',
+            'application/vnd.google-apps.presentation': '📽️ מצגת',
+            'application/vnd.google-apps.folder': '📁 תיקיה',
+            'application/pdf': '📕 PDF',
+          };
+          const formatted = files.map((f) => {
+            const type = MIME_LABELS[f.mimeType] || '📎 קובץ';
+            return `• ${type} ${f.name}\n  ${f.link || ''}`;
+          }).join('\n');
+          const msg = `📂 קבצים אחרונים בדרייב:\n\n${formatted}`;
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        } catch (error) {
+          logger.error('webhook', 'Drive recent failed', { error: error.message });
+          const msg = 'שגיאה בטעינת קבצים מהדרייב 🤔';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+      }
+
+      case 'gmail_list': {
+        const conn = await db.getCalendarConnection(userId, 'google');
+        if (!conn) {
+          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const credentials = JSON.parse(conn.credentials);
+          const emails = await gmail.listEmails(credentials, content || '', 5);
+          if (emails.length === 0) {
+            const msg = content ? `לא מצאתי מיילים עבור "${content}" 📧` : 'אין מיילים חדשים 📧';
+            await whatsapp.sendMessage(chatId, msg);
+            return msg;
+          }
+          const formatted = emails.map((e) => {
+            const from = e.from.replace(/<[^>]*>/g, '').trim();
+            const date = e.date ? new Date(e.date).toLocaleDateString('he-IL') : '';
+            return `• *${e.subject}*\n  מאת: ${from}\n  ${date}\n  ${e.snippet.substring(0, 80)}...`;
+          }).join('\n\n');
+          const label = content ? `🔍 מיילים - "${content}"` : '📧 מיילים אחרונים';
+          const msg = `${label}:\n\n${formatted}`;
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        } catch (error) {
+          logger.error('webhook', 'Gmail list failed', { error: error.message });
+          const msg = 'שגיאה בטעינת מיילים 🤔';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+      }
+
+      case 'gmail_read': {
+        const conn = await db.getCalendarConnection(userId, 'google');
+        if (!conn) {
+          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const credentials = JSON.parse(conn.credentials);
+          // Search for the email by subject/content
+          const emails = await gmail.listEmails(credentials, content || '', 1);
+          if (emails.length === 0) {
+            const msg = `לא מצאתי מייל על "${content}" 📧`;
+            await whatsapp.sendMessage(chatId, msg);
+            return msg;
+          }
+          const fullEmail = await gmail.readEmail(credentials, emails[0].id);
+          const from = fullEmail.from.replace(/<[^>]*>/g, '').trim();
+          const bodyPreview = fullEmail.body.length > 1000 ? fullEmail.body.substring(0, 1000) + '...' : fullEmail.body;
+          const msg = `📧 *${fullEmail.subject}*\nמאת: ${from}\n${fullEmail.date}\n\n${bodyPreview}`;
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        } catch (error) {
+          logger.error('webhook', 'Gmail read failed', { error: error.message });
+          const msg = 'שגיאה בקריאת המייל 🤔';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+      }
+
+      case 'gmail_send': {
+        const conn = await db.getCalendarConnection(userId, 'google');
+        if (!conn) {
+          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const credentials = JSON.parse(conn.credentials);
+          const emailTo = aiResponse.email_to;
+          const emailSubject = aiResponse.email_subject;
+          const emailBody = aiResponse.email_body;
+          if (!emailTo || !emailSubject || !emailBody) {
+            response = 'חסרים פרטים לשליחת המייל. צריך: כתובת, נושא ותוכן 🤔';
+            break;
+          }
+          await gmail.sendEmail(credentials, emailTo, emailSubject, emailBody);
+          break;
+        } catch (error) {
+          logger.error('webhook', 'Gmail send failed', { error: error.message });
+          response = 'שגיאה בשליחת המייל 🤔';
+        }
+        break;
+      }
+
+      case 'gmail_reply': {
+        const conn = await db.getCalendarConnection(userId, 'google');
+        if (!conn) {
+          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
+          await whatsapp.sendMessage(chatId, msg);
+          return msg;
+        }
+        try {
+          const credentials = JSON.parse(conn.credentials);
+          const emailSubject = aiResponse.email_subject;
+          const emailBody = aiResponse.email_body;
+          if (!emailSubject || !emailBody) {
+            response = 'חסרים פרטים לתגובה למייל. צריך: נושא המייל ותוכן התגובה 🤔';
+            break;
+          }
+          // Find the email to reply to
+          const emails = await gmail.listEmails(credentials, `subject:${emailSubject}`, 1);
+          if (emails.length === 0) {
+            response = `לא מצאתי מייל על "${emailSubject}" 📧`;
+            break;
+          }
+          await gmail.replyToEmail(credentials, emails[0].id, emailBody);
+          break;
+        } catch (error) {
+          logger.error('webhook', 'Gmail reply failed', { error: error.message });
+          response = 'שגיאה בתגובה למייל 🤔';
         }
         break;
       }
