@@ -639,10 +639,12 @@
     }
     .integrations-track {
       display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
       align-items: center;
-      gap: 1.5rem;
+      gap: 1.2rem;
       width: max-content;
-      animation: marqueeScroll 35s linear infinite;
+      animation: marqueeScroll 40s linear infinite;
     }
     .integrations-track:hover {
       animation-play-state: paused;
@@ -653,6 +655,7 @@
     }
     .integration-item {
       display: flex;
+      flex-direction: row;
       align-items: center;
       gap: 0.55rem;
       flex-shrink: 0;
@@ -662,6 +665,7 @@
       border-radius: 12px;
       transition: all 0.3s ease;
       cursor: default;
+      white-space: nowrap;
     }
     .integration-item:hover {
       background: var(--surface-hover);
@@ -1581,11 +1585,10 @@
   <div class="integrations-label anim-in">מתחבר לכלים שאתה כבר משתמש בהם</div>
   <div class="integrations-track-wrapper">
     <div class="integrations-track">
-      <!-- Set 1 -->
       <div class="integration-item"><img src="https://cdn.worldvectorlogo.com/logos/monday-1.svg" alt><span>Monday.com</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt><span>Notion</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" alt><span>Google Calendar</span></div>
-      <div class="integration-item"><img src="https://help.apple.com/assets/6765F8EE8198E42C0A09EA21/6765F8FA8198E42C0A09EA4E/he_IL/d1d43be1e68a7b462aae89f0ee227240.png" alt><span>Apple Calendar</span></div>
+      <div class="integration-item"><svg viewBox="0 0 120 120" width="28" height="28"><rect width="120" height="120" rx="26" fill="#fff" stroke="#ccc" stroke-width="1.5"/><text x="60" y="38" text-anchor="middle" font-size="22" font-weight="400" font-family="-apple-system,Helvetica,Arial,sans-serif" fill="#FF3B30">Monday</text><text x="60" y="92" text-anchor="middle" font-size="58" font-weight="300" font-family="-apple-system,Helvetica,Arial,sans-serif" fill="#1d1d1f">10</text></svg><span>Apple Calendar</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt><span>Google Drive</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt><span>Gmail</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" alt><span>Slack</span></div>
@@ -1593,11 +1596,11 @@
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Asana_logo.svg" alt><span>Asana</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3f/HubSpot_Logo.svg" alt><span>HubSpot</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt><span>Stripe</span></div>
-      <!-- Duplicate for seamless loop -->
+      <!-- Duplicate -->
       <div class="integration-item"><img src="https://cdn.worldvectorlogo.com/logos/monday-1.svg" alt><span>Monday.com</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt><span>Notion</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" alt><span>Google Calendar</span></div>
-      <div class="integration-item"><img src="https://help.apple.com/assets/6765F8EE8198E42C0A09EA21/6765F8FA8198E42C0A09EA4E/he_IL/d1d43be1e68a7b462aae89f0ee227240.png" alt><span>Apple Calendar</span></div>
+      <div class="integration-item"><svg viewBox="0 0 120 120" width="28" height="28"><rect width="120" height="120" rx="26" fill="#fff" stroke="#ccc" stroke-width="1.5"/><text x="60" y="38" text-anchor="middle" font-size="22" font-weight="400" font-family="-apple-system,Helvetica,Arial,sans-serif" fill="#FF3B30">Monday</text><text x="60" y="92" text-anchor="middle" font-size="58" font-weight="300" font-family="-apple-system,Helvetica,Arial,sans-serif" fill="#1d1d1f">10</text></svg><span>Apple Calendar</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt><span>Google Drive</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt><span>Gmail</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" alt><span>Slack</span></div>
