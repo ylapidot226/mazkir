@@ -639,19 +639,13 @@
     }
     .integrations-track {
       display: flex;
-      flex-direction: row;
       flex-wrap: nowrap;
       align-items: center;
       gap: 1.2rem;
       width: max-content;
-      animation: marqueeScroll 40s linear infinite;
     }
     .integrations-track:hover {
       animation-play-state: paused;
-    }
-    @keyframes marqueeScroll {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-50%); }
     }
     .integration-item {
       display: flex;
@@ -1596,18 +1590,6 @@
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Asana_logo.svg" alt><span>Asana</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3f/HubSpot_Logo.svg" alt><span>HubSpot</span></div>
       <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt><span>Stripe</span></div>
-      <!-- Duplicate -->
-      <div class="integration-item"><img src="https://cdn.worldvectorlogo.com/logos/monday-1.svg" alt><span>Monday.com</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" alt><span>Notion</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" alt><span>Google Calendar</span></div>
-      <div class="integration-item"><svg viewBox="0 0 120 120" width="28" height="28"><rect width="120" height="120" rx="26" fill="#fff" stroke="#ccc" stroke-width="1.5"/><text x="60" y="38" text-anchor="middle" font-size="22" font-weight="400" font-family="-apple-system,Helvetica,Arial,sans-serif" fill="#FF3B30">Monday</text><text x="60" y="92" text-anchor="middle" font-size="58" font-weight="300" font-family="-apple-system,Helvetica,Arial,sans-serif" fill="#1d1d1f">10</text></svg><span>Apple Calendar</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/1/12/Google_Drive_icon_%282020%29.svg" alt><span>Google Drive</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/7/7e/Gmail_icon_%282020%29.svg" alt><span>Gmail</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" alt><span>Slack</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/en/8/8c/Trello_logo.svg" alt><span>Trello</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Asana_logo.svg" alt><span>Asana</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/3/3f/HubSpot_Logo.svg" alt><span>HubSpot</span></div>
-      <div class="integration-item"><img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt><span>Stripe</span></div>
     </div>
   </div>
 </section>
@@ -1867,6 +1849,28 @@
 </footer>
 
 <script>
+  // =========================================
+  // Seamless Infinite Marquee
+  // =========================================
+  (function() {
+    const track = document.querySelector('.integrations-track');
+    if (!track) return;
+    const items = Array.from(track.children);
+    // Clone items 3 more times to ensure full coverage on any screen
+    for (let i = 0; i < 3; i++) {
+      items.forEach(item => track.appendChild(item.cloneNode(true)));
+    }
+    // Measure one set width and animate
+    const gap = parseFloat(getComputedStyle(track).gap) || 0;
+    const oneSetWidth = items.reduce((w, el) => w + el.offsetWidth + gap, 0);
+    track.style.animation = 'none';
+    // Create dynamic keyframes
+    const style = document.createElement('style');
+    style.textContent = `@keyframes marqueeScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-${oneSetWidth}px); } }`;
+    document.head.appendChild(style);
+    track.style.animation = `marqueeScroll ${items.length * 3}s linear infinite`;
+  })();
+
   // =========================================
   // Intersection Observer for Scroll Animations
   // =========================================
