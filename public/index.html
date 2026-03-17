@@ -1856,19 +1856,23 @@
     const track = document.querySelector('.integrations-track');
     if (!track) return;
     const items = Array.from(track.children);
-    // Clone items 3 more times to ensure full coverage on any screen
-    for (let i = 0; i < 3; i++) {
+    const gap = parseFloat(getComputedStyle(track).gap) || 0;
+
+    // Measure one set width precisely
+    let oneSetWidth = 0;
+    items.forEach(el => { oneSetWidth += el.getBoundingClientRect().width + gap; });
+
+    // Clone enough times to fill 3x screen width (ensures no gap ever)
+    const clonesNeeded = Math.ceil((window.innerWidth * 3) / oneSetWidth);
+    for (let i = 0; i < clonesNeeded; i++) {
       items.forEach(item => track.appendChild(item.cloneNode(true)));
     }
-    // Measure one set width and animate
-    const gap = parseFloat(getComputedStyle(track).gap) || 0;
-    const oneSetWidth = items.reduce((w, el) => w + el.offsetWidth + gap, 0);
-    track.style.animation = 'none';
-    // Create dynamic keyframes
+
+    // Animate: scroll exactly one set width, then CSS loops seamlessly
     const style = document.createElement('style');
     style.textContent = `@keyframes marqueeScroll { 0% { transform: translateX(0); } 100% { transform: translateX(-${oneSetWidth}px); } }`;
     document.head.appendChild(style);
-    track.style.animation = `marqueeScroll ${items.length * 3}s linear infinite`;
+    track.style.animation = `marqueeScroll 35s linear infinite`;
   })();
 
   // =========================================

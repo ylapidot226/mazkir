@@ -70,9 +70,9 @@ router.get('/google/callback', async (req, res) => {
         <div style="max-width:400px;margin:0 auto;background:rgba(255,255,255,0.85);border-radius:16px;padding:40px;border:1px solid rgba(0,0,0,0.08);">
           <img src="/logo.png" alt="מזכיר" style="width:48px;height:48px;border-radius:12px;margin-bottom:16px;">
           <div style="font-size:48px;margin-bottom:16px;">🎉</div>
-          <h2 style="color:#25D366;margin:0 0 12px;">Google Calendar מחובר!</h2>
+          <h2 style="color:#25D366;margin:0 0 12px;">Google מחובר!</h2>
           <p style="color:#667781;margin-top:15px;">
-            מעכשיו כל האירועים שתוסיף דרך וואטסאפ יופיעו גם ב-Google Calendar, וכל מה שתוסיף ב-Google Calendar יופיע גם אצל מזכיר.
+            מעכשיו היומן, הדרייב והאימייל שלך מחוברים למזכיר. הכל מסתנכרן אוטומטית!
           </p>
           <p style="color:#667781;margin-top:15px;">אפשר לסגור את הדף ולחזור לוואטסאפ 💬</p>
         </div>
