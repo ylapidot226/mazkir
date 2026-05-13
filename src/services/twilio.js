@@ -79,15 +79,32 @@ function parseWebhook(body) {
   const chatId = sender; // In Twilio, chatId is the same as sender for private chats
 
   // Handle media messages (no text body, but has media)
-  if (!messageBody && numMedia > 0) {
-    return {
-      sender,
-      chatId,
-      senderName: profileName || '',
-      text: null,
-      isUnsupportedMedia: true,
-      mediaType: 'imageMessage', // Generic media type
-    };
+  if (numMedia > 0) {
+    const contentType = body.MediaContentType0 || '';
+    const mediaUrl = body.MediaUrl0 || null;
+
+    if (contentType === 'application/pdf' && mediaUrl) {
+      return {
+        sender,
+        chatId,
+        senderName: profileName || '',
+        text: messageBody || null,
+        isPdf: true,
+        mediaUrl,
+        mediaContentType: contentType,
+      };
+    }
+
+    if (!messageBody) {
+      return {
+        sender,
+        chatId,
+        senderName: profileName || '',
+        text: null,
+        isUnsupportedMedia: true,
+        mediaType: 'imageMessage',
+      };
+    }
   }
 
   // Must have text content

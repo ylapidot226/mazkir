@@ -1,6 +1,5 @@
 require('dotenv').config();
 
-// Validate critical env vars at startup
 const required = ['OPENAI_API_KEY', 'SUPABASE_URL', 'SUPABASE_KEY'];
 for (const key of required) {
   if (!process.env[key]) {
@@ -32,16 +31,6 @@ module.exports = {
   admin: {
     password: process.env.ADMIN_PASSWORD,
     path: process.env.ADMIN_PATH || '/admin',
-  },
-  google: {
-    clientId: process.env.GOOGLE_CLIENT_ID || '',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-    redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/calendar/google/callback',
-  },
-  monday: {
-    clientId: process.env.MONDAY_CLIENT_ID || '',
-    clientSecret: process.env.MONDAY_CLIENT_SECRET || '',
-    redirectUri: process.env.MONDAY_REDIRECT_URI || 'http://localhost:3000/monday/callback',
   },
   cron: {
     secret: process.env.CRON_SECRET || '',

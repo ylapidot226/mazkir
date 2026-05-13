@@ -275,14 +275,6 @@ async function runAllReminders() {
   await checkHourlyReminders();
   await checkCustomReminders();
 
-  // Calendar sync (runs on same schedule)
-  try {
-    const { syncAllCalendars } = require('./calendarSync');
-    await syncAllCalendars();
-  } catch (error) {
-    logger.error('reminders', 'Calendar sync failed', { error: error.message });
-  }
-
   // Bug report (every 6 hours)
   try {
     const { runBugReport, isBugReportTime } = require('./bugMonitor');

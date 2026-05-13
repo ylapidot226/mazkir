@@ -6,26 +6,21 @@ const config = require('./config');
 const logger = require('./utils/logger');
 const webhookRoutes = require('./routes/webhook');
 const adminRoutes = require('./routes/admin');
-const { router: calendarRoutes } = require('./routes/calendar');
-const mondayRoutes = require('./routes/monday');
 const { runAllReminders } = require('./services/reminders');
 
 const app = express();
 
-// Trust proxy (Vercel runs behind a reverse proxy)
 app.set('trust proxy', 1);
 
-// Security headers (#8)
 app.use(helmet({
-  contentSecurityPolicy: false, // Allow inline scripts for landing page
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: false, // Allow WhatsApp/social crawlers to fetch og:image
+  crossOriginResourcePolicy: false,
 }));
 
-// CORS - restrict to own domain (#4)
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://maztary.com', 'https://www.maztary.com', 'https://accounts.google.com']
+    ? ['https://maztary.com', 'https://www.maztary.com']
     : true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
@@ -33,38 +28,20 @@ app.use(cors({
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
-// Serve static files (landing page + admin)
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// Admin panel at non-obvious path (#12)
 app.get(config.admin.path, (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'admin.html'));
 });
 
-// Routes
 app.use('/webhook', webhookRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/calendar', calendarRoutes);
-app.use('/monday', mondayRoutes);
 
-// Short URL redirect for calendar connect (path-based to avoid WhatsApp link breaking)
-app.get('/c/:token/:p', (req, res) => {
-  const { token, p } = req.params;
-  if (p === 'm') {
-    return res.redirect(`/monday/auth?token=${token}`);
-  }
-  const provider = p === 'g' ? 'google' : p === 'a' ? 'apple' : '';
-  res.redirect(`/calendar/connect?token=${token}&provider=${provider}`);
-});
-
-// Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Cron endpoint - secured with secret (#3)
 app.get('/api/cron/reminders', async (req, res) => {
-  // Allow Vercel cron (sends authorization header) or check secret
   const authHeader = req.headers['authorization'];
   const querySecret = req.query.secret;
   const cronSecret = config.cron.secret;
@@ -83,7 +60,6 @@ app.get('/api/cron/reminders', async (req, res) => {
   }
 });
 
-// Bug monitor cron endpoint - runs every 6 hours
 app.get('/api/cron/bug-report', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const querySecret = req.query.secret;
@@ -103,7 +79,6 @@ app.get('/api/cron/bug-report', async (req, res) => {
   }
 });
 
-// Start server (only when not running on Vercel)
 if (process.env.VERCEL !== '1') {
   const { startReminderCron } = require('./services/reminders');
   app.listen(config.port, () => {

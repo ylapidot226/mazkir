@@ -19,6 +19,7 @@
     "helmet": "^8.1.0",
     "node-cron": "^3.0.3",
     "openai": "^6.27.0",
+    "pdf-parse": "^2.4.5",
     "resend": "^6.9.3",
     "tsdav": "^2.1.8",
     "twilio": "^5.13.0"

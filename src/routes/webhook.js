@@ -4,15 +4,9 @@ const router = express.Router();
 const whatsapp = require('../services/twilio');
 const claude = require('../services/claude');
 const db = require('../services/database');
-const { generateConnectToken } = require('./calendar');
-const { pushEventToCalendars, deleteEventFromCalendars, pushTaskToAll, pushShoppingToAppleReminders, completeTaskInAll } = require('../services/calendarSync');
-const monday = require('../services/monday');
-const googleDrive = require('../services/googleDrive');
-const gmail = require('../services/gmail');
 const config = require('../config');
 const logger = require('../utils/logger');
 
-// Hebrew date formatting that works on all platforms
 const DAYS_HE = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
@@ -27,47 +21,34 @@ function formatDateHe(isoString, timezone = 'Asia/Jerusalem') {
   return { day, date, month, time: `${hours}:${minutes}`, full: `יום ${day}, ${date} ב${month} בשעה ${hours}:${minutes}` };
 }
 
-// Rate limiting per IP (#5)
 const webhookLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 30, // 30 requests per minute per IP
+  windowMs: 60 * 1000,
+  max: 30,
   message: { error: 'Too many requests' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-/**
- * Validate datetime string (#10)
- */
 function isValidDatetime(dt) {
   if (!dt) return false;
   const d = new Date(dt);
   return !isNaN(d.getTime());
 }
 
-/**
- * Sanitize text for ilike queries - escape special pattern chars (#6)
- */
 function sanitizeForLike(str) {
   if (!str) return str;
   return str.replace(/[%_\\]/g, (c) => '\\' + c);
 }
 
-/**
- * Verify webhook comes from Twilio via X-Twilio-Signature (#1)
- */
 function verifyWebhook(req, res, next) {
-  // Twilio signature validation
   if (!config.twilio.authToken) {
     return next();
   }
 
-  // Try validation with multiple URL variants (www vs non-www)
   if (whatsapp.validateWebhook(req)) {
     return next();
   }
 
-  // If the request has Twilio headers, allow it (Twilio sends specific headers)
   if (req.headers['x-twilio-signature'] && req.body?.MessageSid) {
     logger.info('webhook', 'Twilio signature mismatch but has valid headers, allowing');
     return next();
@@ -80,13 +61,12 @@ function verifyWebhook(req, res, next) {
 // Pending user approvals: adminPhone -> { userId, name, email, phone }
 const pendingApprovals = new Map();
 
-// Deduplication: track recently processed messages to avoid duplicates
+// Deduplication: track recently processed messages
 const recentMessages = new Map();
 function isDuplicate(idMessage) {
   if (!idMessage) return false;
   if (recentMessages.has(idMessage)) return true;
   recentMessages.set(idMessage, Date.now());
-  // Cleanup old entries (older than 5 minutes)
   if (recentMessages.size > 200) {
     const cutoff = Date.now() - 5 * 60 * 1000;
     for (const [k, v] of recentMessages) {
@@ -122,7 +102,6 @@ router.post('/whatsapp', webhookLimiter, verifyWebhook, async (req, res) => {
     logger.error('webhook', 'Error processing webhook', { message: error.message, stack: error.stack });
   }
 
-  // Twilio expects empty 200 response (or TwiML)
   return res.status(200).send('');
 });
 
@@ -132,7 +111,13 @@ async function processWebhook(body) {
 
   const { sender, chatId, senderName, text, isUnsupportedMedia, mediaType } = parsed;
 
-  // Handle unsupported media messages
+  if (parsed.isPdf) {
+    const user = await db.getUser(sender);
+    if (!user || user.status !== 'active') return;
+    await withUserLock(user.id, () => handlePdf(chatId, parsed.mediaUrl, parsed.text, user));
+    return;
+  }
+
   if (isUnsupportedMedia) {
     const user = await db.getUser(sender);
     if (user && user.status === 'active') {
@@ -153,7 +138,6 @@ async function processWebhook(body) {
 
   logger.info('webhook', 'Message received', { sender, senderName });
 
-  // Handle admin approval via WhatsApp reply
   const ADMIN_PHONE = process.env.ADMIN_PHONE || '35795167764@c.us';
   if (sender === ADMIN_PHONE && pendingApprovals.has(sender)) {
     const normalizedText = text.trim().toLowerCase();
@@ -179,7 +163,6 @@ async function processWebhook(body) {
     }
   }
 
-  // Check if user exists and is active
   const user = await db.getUser(sender);
 
   if (!user) {
@@ -201,16 +184,13 @@ async function processWebhook(body) {
 
   if (user.status === 'blocked') return;
 
-  // Process with per-user lock to prevent race conditions
   await withUserLock(user.id, async () => {
-    // Get conversation history for context
     const history = await db.getRecentMessages(user.id, 8);
 
-    // First-time user: send welcome message with all features
     if (history.length === 0) {
       const name = user.name || senderName || '';
       const cleanName = name.replace(/<[^>]*>/g, '').trim();
-      const welcome = `היי${cleanName ? ` ${cleanName}` : ''}! 👋\nאני המזכיר האישי שלך.\n\nפשוט כתוב לי מה שצריך לזכור ואני אטפל בשאר!\n\n📅 *אירועים ותזכורות*\nכתוב למשל:\nמחר ב-10 פגישה עם דני\nואני אשמור ואזכיר לך!\n\nאם אין זמן מסוים — פשוט כתוב:\nלקנות מתנה ליוסי\nואני אשאל אם יש זמן.\n\n🔄 *אירועים קבועים*\nלדוגמה:\nכל יום שני אימון ב-18:00\n\n🔔 *תזכורות אוטומטיות*\nכל ערב ב-21:00 סיכום של מה שמתוכנן למחר,\nושעה לפני כל אירוע — תזכורת נוספת.\n\n📋 *רשימות*\nלדוגמה:\nתוסיף לרשימת פסח לקנות מצות.\n\n🛒 *רשימת קניות*\nלדוגמה:\nאני צריך חלב, לחם וביצים.\n\n📆 *סנכרון לוח שנה*\nאפשר לחבר ל-Google Calendar\nאו ל-Apple Calendar.\n\nכדי להתחיל, פשוט כתוב:\nחבר לוח שנה.`;
+      const welcome = `היי${cleanName ? ` ${cleanName}` : ''}! 👋\nאני המזכיר האישי שלך.\n\nפשוט כתוב לי מה שצריך לזכור ואני אטפל בשאר!\n\n📅 *אירועים ותזכורות*\nכתוב למשל:\nמחר ב-10 פגישה עם דני\nואני אשמור ואזכיר לך!\n\nאם אין זמן מסוים — פשוט כתוב:\nלקנות מתנה ליוסי\nואני אשאל אם יש זמן.\n\n🔄 *אירועים קבועים*\nלדוגמה:\nכל יום שני אימון ב-18:00\n\n🔔 *תזכורות אוטומטיות*\nכל ערב ב-21:00 סיכום של מה שמתוכנן למחר,\nושעה לפני כל אירוע — תזכורת נוספת.\n\n📋 *רשימות*\nלדוגמה:\nתוסיף לרשימת פסח לקנות מצות.\n\n🛒 *רשימת קניות*\nלדוגמה:\nאני צריך חלב, לחם וביצים.`;
 
       await whatsapp.sendMessage(chatId, welcome);
       await db.saveMessage(user.id, 'user', text);
@@ -218,23 +198,17 @@ async function processWebhook(body) {
       return;
     }
 
-    // Truncate very long messages to prevent token overflow
     const safeText = text.length > 1000 ? text.substring(0, 1000) + '...' : text;
 
-    // Show typing indicator while AI processes
     whatsapp.sendTyping(chatId).catch(() => {});
 
-    // Process with AI
     const aiResponse = await claude.processMessage(safeText, history, null, user.timezone || 'Asia/Jerusalem');
-    logger.info('webhook', 'AI response', { action: aiResponse.action, content: aiResponse.content, days: aiResponse.days, time: aiResponse.time, category: aiResponse.category });
+    logger.info('webhook', 'AI response', { action: aiResponse.action, content: aiResponse.content });
 
-    // Save user message
     await db.saveMessage(user.id, 'user', text);
 
-    // Execute the action and get the response that was actually sent
     const sentResponse = await executeAction(user.id, chatId, aiResponse, user.timezone || 'Asia/Jerusalem');
 
-    // Save condensed history for query actions to prevent AI context pollution
     const historyMsg = getCondensedHistory(aiResponse.action, sentResponse);
     if (historyMsg) {
       await db.saveMessage(user.id, 'assistant', historyMsg);
@@ -242,10 +216,6 @@ async function processWebhook(body) {
   });
 }
 
-/**
- * Return a condensed version of the response for conversation history.
- * Prevents full event/task lists from polluting the AI context.
- */
 function getCondensedHistory(action, sentResponse) {
   if (!sentResponse) return null;
   switch (action) {
@@ -254,38 +224,6 @@ function getCondensedHistory(action, sentResponse) {
     case 'query_lists':
     case 'query_shopping':
     case 'query_recurring': {
-      // Keep the actual response but truncate if too long
-      const maxLen = 400;
-      if (sentResponse.length > maxLen) {
-        return sentResponse.substring(0, maxLen) + '...';
-      }
-      return sentResponse;
-    }
-    case 'connect_calendar':
-      return '[שלחתי קישור לחיבור לוח שנה]';
-    case 'disconnect_calendar':
-      return '[ניתקתי לוח שנה]';
-    case 'connect_monday':
-      return '[שלחתי קישור לחיבור Monday.com]';
-    case 'disconnect_monday':
-      return '[ניתקתי Monday.com]';
-    case 'drive_search':
-    case 'drive_recent':
-    case 'gmail_list':
-    case 'gmail_read': {
-      const maxLen = 400;
-      if (sentResponse.length > maxLen) {
-        return sentResponse.substring(0, maxLen) + '...';
-      }
-      return sentResponse;
-    }
-    case 'gmail_send':
-      return '[שלחתי מייל]';
-    case 'gmail_reply':
-      return '[הגבתי למייל]';
-    case 'monday_boards':
-    case 'monday_items':
-    case 'monday_search': {
       const maxLen = 400;
       if (sentResponse.length > maxLen) {
         return sentResponse.substring(0, maxLen) + '...';
@@ -297,9 +235,6 @@ function getCondensedHistory(action, sentResponse) {
   }
 }
 
-/**
- * Execute the action returned by AI
- */
 async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusalem') {
   const { action, category, content, datetime, location, items } = aiResponse;
   let { response } = aiResponse;
@@ -309,33 +244,28 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
       case 'add_event':
         if (items && Array.isArray(items) && items.length > 0) {
           for (const item of items) {
-            if (!isValidDatetime(item.datetime)) continue; // (#10)
-            const ev = await db.addEvent(userId, item.content || content, item.datetime, item.location || location);
-            if (ev) pushEventToCalendars(userId, ev.id).catch(() => {});
+            if (!isValidDatetime(item.datetime)) continue;
+            await db.addEvent(userId, item.content || content, item.datetime, item.location || location);
           }
         } else {
           if (!isValidDatetime(datetime)) {
             response = 'לא הצלחתי לזהות תאריך ושעה תקינים. נסה שוב עם פרטים מדויקים יותר 🤔';
             break;
           }
-          const ev = await db.addEvent(userId, content, datetime, location);
-          if (ev) pushEventToCalendars(userId, ev.id).catch(() => {});
+          await db.addEvent(userId, content, datetime, location);
         }
         break;
 
-      case 'add_task': {
-        const newTask = await db.addTask(userId, category || 'כללי', content);
-        if (newTask) pushTaskToAll(userId, newTask.id).catch(() => {});
+      case 'add_task':
+        await db.addTask(userId, category || 'כללי', content);
         break;
-      }
 
       case 'add_shopping': {
         const shoppingItems = items && Array.isArray(items) && items.length > 0
           ? items.map((i) => (typeof i === 'string' ? i : i.content).trim()).filter(Boolean)
           : content.split(',').map((i) => i.trim()).filter(Boolean);
         for (const item of shoppingItems) {
-          const newItem = await db.addShoppingItem(userId, item);
-          if (newItem) pushShoppingToAppleReminders(userId, newItem.id).catch(() => {});
+          await db.addShoppingItem(userId, item);
         }
         break;
       }
@@ -345,7 +275,6 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         let startDate = aiResponse.start_date || null;
         const endDate = aiResponse.end_date || null;
 
-        // Use current time as start to avoid showing events that already passed
         if (startDate) {
           const now = new Date();
           const queryStart = new Date(startDate);
@@ -369,26 +298,14 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           msg += `📅 ${labels[range] || 'אירועים'}:\n\n${formatted}`;
         }
 
-        // Show recurring events filtered by the relevant days in the date range
         if (recurring.length > 0 && startDate) {
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-
-          const start = new Date(startDate);
-          const end = endDate ? new Date(endDate) : new Date(start.getTime() + 24 * 60 * 60 * 1000);
-
-          // Collect all day-of-week numbers in the date range
-          // Parse date parts directly from ISO string to avoid UTC conversion issues
-          function localDayFromISO(isoStr) {
-            const [y, m, d] = isoStr.substring(0, 10).split('-').map(Number);
-            return new Date(y, m - 1, d).getDay();
-          }
-          const daysInRange = new Set();
-          // Walk day by day using date-only strings to stay timezone-safe
           const startParts = startDate.substring(0, 10).split('-').map(Number);
           const endISO = endDate || new Date(new Date(startDate).getTime() + 24 * 60 * 60 * 1000).toISOString();
           const endParts = endISO.substring(0, 10).split('-').map(Number);
           const cursor = new Date(startParts[0], startParts[1] - 1, startParts[2]);
           const endLocal = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+          const daysInRange = new Set();
           while (cursor <= endLocal) {
             daysInRange.add(cursor.getDay().toString());
             cursor.setDate(cursor.getDate() + 1);
@@ -407,7 +324,6 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
             msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
           }
         } else if (recurring.length > 0 && !startDate) {
-          // No date filter - show all recurring
           const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
           const formatted = recurring.map((r) => {
             const days = r.days.split(',').map((d) => dayNames[parseInt(d.trim())] || d.trim()).join(', ');
@@ -417,7 +333,6 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           msg += `${msg ? '\n\n' : ''}🔄 אירועים קבועים:\n\n${formatted}`;
         }
 
-        // Also show open tasks so user sees everything in one place
         const tasks = await db.getTasks(userId);
         if (tasks.length > 0) {
           const taskLines = tasks.map((t) => `• ${t.content}${t.category && t.category !== 'כללי' ? ` (${t.category})` : ''}`).join('\n');
@@ -427,7 +342,6 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         if (!msg) {
           msg = response || 'אין לך שום דבר מתוכנן 👍';
         } else if (response) {
-          // Add Claude's contextual response before the list
           msg = `${response}\n\n${msg}`;
         }
         await whatsapp.sendMessage(chatId, msg);
@@ -442,7 +356,6 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           msg = `אין משימות פתוחות${catMsg} ✅`;
           await whatsapp.sendMessage(chatId, msg);
         } else if (tasks.length === 1) {
-          // Polls need at least 2 options
           msg = `📋 ${category ? `משימות - ${category}` : 'המשימות שלך'}:\n\n• ${tasks[0].content}\n\nכדי לסמן כבוצע כתוב: "ביצעתי ${tasks[0].content}"`;
           await whatsapp.sendMessage(chatId, msg);
         } else {
@@ -498,7 +411,6 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
           msg = `🛒 רשימת הקניות:\n\n• ${list[0].item}\n\nכדי לסמן כנקנה כתוב: "קניתי ${list[0].item}"`;
           await whatsapp.sendMessage(chatId, msg);
         } else {
-          // Deduplicate items for poll (polls don't allow duplicate option names)
           const seen = new Set();
           const uniqueList = [];
           for (const s of list.slice(0, 12)) {
@@ -507,7 +419,6 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
               uniqueList.push(s);
             }
           }
-
           if (uniqueList.length < 2) {
             msg = `🛒 רשימת הקניות:\n\n• ${uniqueList[0].item}\n\nכדי לסמן כנקנה כתוב: "קניתי ${uniqueList[0].item}"`;
             await whatsapp.sendMessage(chatId, msg);
@@ -522,13 +433,10 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
       }
 
       case 'delete_event': {
-        const safeContent = sanitizeForLike(content); // (#6)
+        const safeContent = sanitizeForLike(content);
         const deletedEvent = await db.deleteEventByContent(userId, safeContent);
         let msg;
         if (deletedEvent) {
-          if (deletedEvent.external_id) {
-            deleteEventFromCalendars(userId, deletedEvent.external_id, deletedEvent.source).catch(() => {});
-          }
           msg = '🗑️ האירוע נמחק בהצלחה!';
         } else {
           msg = 'לא מצאתי אירוע מתאים למחיקה 🤔';
@@ -550,7 +458,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
       }
 
       case 'delete_task': {
-        const safeContent = sanitizeForLike(content); // (#6)
+        const safeContent = sanitizeForLike(content);
         const deleted = await db.deleteTaskByContent(userId, safeContent);
         let msg;
         if (deleted) {
@@ -576,7 +484,7 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
       }
 
       case 'delete_recurring': {
-        const safeContent = sanitizeForLike(content); // (#6)
+        const safeContent = sanitizeForLike(content);
         const deletedRecurring = await db.deleteRecurringEventByContent(userId, safeContent);
         let msg;
         if (deletedRecurring) {
@@ -619,513 +527,12 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         break;
 
       case 'add_reminder': {
-        // Legacy: convert reminders to events so they get auto-reminders + calendar sync
         if (isValidDatetime(datetime)) {
-          const ev = await db.addEvent(userId, content, datetime, location);
-          if (ev) pushEventToCalendars(userId, ev.id).catch(() => {});
+          await db.addEvent(userId, content, datetime, location);
         } else {
           response = 'לא הצלחתי לזהות תאריך ושעה. נסה שוב 🤔';
         }
         break;
-      }
-
-      case 'connect_calendar': {
-        const provider = content?.toLowerCase() || '';
-        const token = await generateConnectToken(userId);
-        const p = provider === 'google' ? 'g' : provider === 'apple' ? 'a' : 'x';
-        const shortUrl = `https://maztary.com/c/${token}/${p}`;
-        const label = provider === 'apple' ? '🍎 Apple Calendar' : '📗 Google';
-        await whatsapp.sendMessage(chatId, `לחץ על הלינק לחיבור ${label}:`);
-        await whatsapp.sendMessage(chatId, shortUrl);
-        return shortUrl;
-      }
-
-      case 'connect_monday': {
-        const token = await generateConnectToken(userId);
-        const shortUrl = `https://maztary.com/c/${token}/m`;
-        await whatsapp.sendMessage(chatId, `לחיבור Monday לחץ על הלינק *מהמחשב* (Monday לא תומך בהתחברות מהטלפון):`);
-        await whatsapp.sendMessage(chatId, shortUrl);
-        return shortUrl;
-      }
-
-      case 'disconnect_monday': {
-        await db.deleteCalendarConnection(userId, 'monday');
-        const msg = '✅ Monday.com נותק בהצלחה!';
-        await whatsapp.sendMessage(chatId, msg);
-        return msg;
-      }
-
-      case 'monday_boards': {
-        const conn = await db.getCalendarConnection(userId, 'monday');
-        if (!conn) {
-          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" כדי להתחבר 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const { access_token } = JSON.parse(conn.credentials);
-          const boards = await monday.getBoards(access_token);
-          if (boards.length === 0) {
-            const msg = 'לא מצאתי בורדים בחשבון Monday שלך 📋';
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const formatted = boards.map((b, i) => `${i + 1}. ${b.name}`).join('\n');
-          const msg = `📋 הבורדים שלך ב-Monday:\n\n${formatted}\n\nכדי לבחור בורד כתוב "בחר בורד" ואת המספר`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        } catch (error) {
-          logger.error('webhook', 'Monday boards failed', { error: error.message });
-          const msg = 'שגיאה בגישה ל-Monday. נסה להתחבר מחדש עם "חבר מאנדיי" 🔄';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-      }
-
-      case 'monday_select_board': {
-        const conn = await db.getCalendarConnection(userId, 'monday');
-        if (!conn) {
-          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" כדי להתחבר 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const { access_token } = JSON.parse(conn.credentials);
-          const boards = await monday.getBoards(access_token);
-          const boardNum = parseInt(content);
-          let board;
-          if (!isNaN(boardNum) && boardNum >= 1 && boardNum <= boards.length) {
-            board = boards[boardNum - 1];
-          } else {
-            // Try to find by name
-            board = boards.find(b => b.name.includes(content));
-          }
-          if (!board) {
-            const msg = `לא מצאתי בורד "${content}". כתוב "תראה בורדים" כדי לראות את הרשימה`;
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          await db.saveMondayPreferences(userId, board.id, board.name);
-          const msg = `✅ בורד "${board.name}" נבחר כברירת מחדל!\n\nעכשיו אפשר:\n• "תראה פריטים" - רשימת הפריטים\n• "תוסיף פריט: שם" - הוספת פריט חדש\n• "חפש במאנדיי: טקסט" - חיפוש`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        } catch (error) {
-          logger.error('webhook', 'Monday select board failed', { error: error.message });
-          const msg = 'שגיאה בבחירת בורד 🤔';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-      }
-
-      case 'monday_items': {
-        const conn = await db.getCalendarConnection(userId, 'monday');
-        if (!conn) {
-          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const { access_token } = JSON.parse(conn.credentials);
-          const prefs = await db.getMondayPreferences(userId);
-          const boardId = aiResponse.board_id || prefs?.default_board_id;
-          if (!boardId) {
-            const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const items = await monday.getBoardItems(access_token, boardId, 20);
-          if (items.length === 0) {
-            const msg = `אין פריטים בבורד "${prefs?.default_board_name || boardId}" 📋`;
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const formatted = items.map((item) => {
-            const status = item.column_values.find(c => c.type === 'status');
-            const person = item.column_values.find(c => c.type === 'person');
-            const statusText = status?.text ? ` [${status.text}]` : '';
-            const personText = person?.text ? ` 👤 ${person.text}` : '';
-            const group = item.group?.title ? ` (${item.group.title})` : '';
-            return `• ${item.name}${statusText}${personText}${group}`;
-          }).join('\n');
-          const boardName = prefs?.default_board_name || 'Monday';
-          const msg = `📋 ${boardName}:\n\n${formatted}`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        } catch (error) {
-          logger.error('webhook', 'Monday items failed', { error: error.message });
-          const msg = 'שגיאה בטעינת פריטים מ-Monday 🤔';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-      }
-
-      case 'monday_create_item': {
-        const conn = await db.getCalendarConnection(userId, 'monday');
-        if (!conn) {
-          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const { access_token } = JSON.parse(conn.credentials);
-          const prefs = await db.getMondayPreferences(userId);
-          const boardId = aiResponse.board_id || prefs?.default_board_id;
-          if (!boardId) {
-            const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const groupId = aiResponse.group_id || null;
-          const newItem = await monday.createItem(access_token, boardId, content, groupId);
-          break; // response will be sent by the default response handler
-        } catch (error) {
-          logger.error('webhook', 'Monday create item failed', { error: error.message });
-          response = 'שגיאה ביצירת פריט ב-Monday 🤔';
-        }
-        break;
-      }
-
-      case 'monday_update_status': {
-        const conn = await db.getCalendarConnection(userId, 'monday');
-        if (!conn) {
-          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const { access_token } = JSON.parse(conn.credentials);
-          const prefs = await db.getMondayPreferences(userId);
-          const boardId = aiResponse.board_id || prefs?.default_board_id;
-          if (!boardId) {
-            const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" 📋';
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          // Find the item by name
-          const items = await monday.searchItems(access_token, aiResponse.item_name || content, boardId);
-          if (items.length === 0) {
-            response = `לא מצאתי פריט "${aiResponse.item_name || content}" בבורד 🤔`;
-            break;
-          }
-          const item = items[0];
-          // Find the status column
-          const boardDetails = await monday.getBoardDetails(access_token, boardId);
-          const statusCol = boardDetails?.columns?.find(c => c.type === 'status');
-          if (!statusCol) {
-            response = 'לא מצאתי עמודת סטטוס בבורד 🤔';
-            break;
-          }
-          const statusValue = aiResponse.status_value;
-          if (!statusValue) {
-            response = 'לא הבנתי לאיזה סטטוס לשנות 🤔';
-            break;
-          }
-          await monday.updateColumnValue(access_token, boardId, item.id, statusCol.id, statusValue);
-          break;
-        } catch (error) {
-          logger.error('webhook', 'Monday update status failed', { error: error.message });
-          response = 'שגיאה בעדכון סטטוס ב-Monday 🤔';
-        }
-        break;
-      }
-
-      case 'monday_add_update': {
-        const conn = await db.getCalendarConnection(userId, 'monday');
-        if (!conn) {
-          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const { access_token } = JSON.parse(conn.credentials);
-          const prefs = await db.getMondayPreferences(userId);
-          const boardId = aiResponse.board_id || prefs?.default_board_id;
-          if (!boardId) {
-            const msg = 'עוד לא בחרת בורד. כתוב "תראה בורדים" ואז "בחר בורד" 📋';
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          if (!aiResponse.item_name) {
-            response = 'לאיזה פריט להוסיף עדכון? 🤔';
-            break;
-          }
-          // Find the item
-          const items = await monday.searchItems(access_token, aiResponse.item_name, boardId);
-          if (items.length === 0) {
-            response = `לא מצאתי פריט "${aiResponse.item_name}" 🤔`;
-            break;
-          }
-          await monday.addUpdate(access_token, items[0].id, aiResponse.update_text || content);
-          break;
-        } catch (error) {
-          logger.error('webhook', 'Monday add update failed', { error: error.message });
-          response = 'שגיאה בהוספת עדכון ב-Monday 🤔';
-        }
-        break;
-      }
-
-      case 'monday_search': {
-        const conn = await db.getCalendarConnection(userId, 'monday');
-        if (!conn) {
-          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const { access_token } = JSON.parse(conn.credentials);
-          const prefs = await db.getMondayPreferences(userId);
-          const boardId = aiResponse.board_id || prefs?.default_board_id || null;
-          const results = await monday.searchItems(access_token, content, boardId);
-          if (results.length === 0) {
-            const msg = `לא מצאתי תוצאות ל-"${content}" 🔍`;
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const formatted = results.map((item) => {
-            const status = item.column_values?.find(c => c.type === 'status');
-            const statusText = status?.text ? ` [${status.text}]` : '';
-            const boardLabel = item.board_name ? ` (${item.board_name})` : '';
-            return `• ${item.name}${statusText}${boardLabel}`;
-          }).join('\n');
-          const msg = `🔍 תוצאות חיפוש "${content}":\n\n${formatted}`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        } catch (error) {
-          logger.error('webhook', 'Monday search failed', { error: error.message });
-          const msg = 'שגיאה בחיפוש ב-Monday 🤔';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-      }
-
-      case 'monday_delete_item': {
-        const conn = await db.getCalendarConnection(userId, 'monday');
-        if (!conn) {
-          const msg = 'עדיין לא חיברת Monday.com. כתוב "חבר מאנדיי" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const { access_token } = JSON.parse(conn.credentials);
-          const prefs = await db.getMondayPreferences(userId);
-          const boardId = aiResponse.board_id || prefs?.default_board_id;
-          const items = await monday.searchItems(access_token, content, boardId);
-          if (items.length === 0) {
-            response = `לא מצאתי פריט "${content}" 🤔`;
-            break;
-          }
-          await monday.deleteItem(access_token, items[0].id);
-          break;
-        } catch (error) {
-          logger.error('webhook', 'Monday delete item failed', { error: error.message });
-          response = 'שגיאה במחיקת פריט ב-Monday 🤔';
-        }
-        break;
-      }
-
-      case 'drive_search': {
-        const conn = await db.getCalendarConnection(userId, 'google');
-        if (!conn) {
-          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const credentials = JSON.parse(conn.credentials);
-          const files = await googleDrive.searchFiles(credentials, content || '');
-          if (files.length === 0) {
-            const msg = `לא מצאתי קבצים עבור "${content}" 🔍`;
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const MIME_LABELS = {
-            'application/vnd.google-apps.document': '📄 מסמך',
-            'application/vnd.google-apps.spreadsheet': '📊 גיליון',
-            'application/vnd.google-apps.presentation': '📽️ מצגת',
-            'application/vnd.google-apps.folder': '📁 תיקיה',
-            'application/pdf': '📕 PDF',
-          };
-          const formatted = files.map((f) => {
-            const type = MIME_LABELS[f.mimeType] || '📎 קובץ';
-            return `• ${type} ${f.name}\n  ${f.link || ''}`;
-          }).join('\n');
-          const msg = `🔍 תוצאות חיפוש "${content}":\n\n${formatted}`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        } catch (error) {
-          logger.error('webhook', 'Drive search failed', { error: error.message });
-          const msg = 'שגיאה בחיפוש בדרייב 🤔';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-      }
-
-      case 'drive_recent': {
-        const conn = await db.getCalendarConnection(userId, 'google');
-        if (!conn) {
-          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const credentials = JSON.parse(conn.credentials);
-          const files = await googleDrive.listRecentFiles(credentials);
-          if (files.length === 0) {
-            const msg = 'לא מצאתי קבצים בדרייב 📂';
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const MIME_LABELS = {
-            'application/vnd.google-apps.document': '📄 מסמך',
-            'application/vnd.google-apps.spreadsheet': '📊 גיליון',
-            'application/vnd.google-apps.presentation': '📽️ מצגת',
-            'application/vnd.google-apps.folder': '📁 תיקיה',
-            'application/pdf': '📕 PDF',
-          };
-          const formatted = files.map((f) => {
-            const type = MIME_LABELS[f.mimeType] || '📎 קובץ';
-            return `• ${type} ${f.name}\n  ${f.link || ''}`;
-          }).join('\n');
-          const msg = `📂 קבצים אחרונים בדרייב:\n\n${formatted}`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        } catch (error) {
-          logger.error('webhook', 'Drive recent failed', { error: error.message });
-          const msg = 'שגיאה בטעינת קבצים מהדרייב 🤔';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-      }
-
-      case 'gmail_list': {
-        const conn = await db.getCalendarConnection(userId, 'google');
-        if (!conn) {
-          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const credentials = JSON.parse(conn.credentials);
-          const emails = await gmail.listEmails(credentials, content || '', 5);
-          if (emails.length === 0) {
-            const msg = content ? `לא מצאתי מיילים עבור "${content}" 📧` : 'אין מיילים חדשים 📧';
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const formatted = emails.map((e) => {
-            const from = e.from.replace(/<[^>]*>/g, '').trim();
-            const date = e.date ? new Date(e.date).toLocaleDateString('he-IL') : '';
-            return `• *${e.subject}*\n  מאת: ${from}\n  ${date}\n  ${e.snippet.substring(0, 80)}...`;
-          }).join('\n\n');
-          const label = content ? `🔍 מיילים - "${content}"` : '📧 מיילים אחרונים';
-          const msg = `${label}:\n\n${formatted}`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        } catch (error) {
-          logger.error('webhook', 'Gmail list failed', { error: error.message });
-          const msg = 'שגיאה בטעינת מיילים 🤔';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-      }
-
-      case 'gmail_read': {
-        const conn = await db.getCalendarConnection(userId, 'google');
-        if (!conn) {
-          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const credentials = JSON.parse(conn.credentials);
-          // Search for the email by subject/content
-          const emails = await gmail.listEmails(credentials, content || '', 1);
-          if (emails.length === 0) {
-            const msg = `לא מצאתי מייל על "${content}" 📧`;
-            await whatsapp.sendMessage(chatId, msg);
-            return msg;
-          }
-          const fullEmail = await gmail.readEmail(credentials, emails[0].id);
-          const from = fullEmail.from.replace(/<[^>]*>/g, '').trim();
-          const bodyPreview = fullEmail.body.length > 1000 ? fullEmail.body.substring(0, 1000) + '...' : fullEmail.body;
-          const msg = `📧 *${fullEmail.subject}*\nמאת: ${from}\n${fullEmail.date}\n\n${bodyPreview}`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        } catch (error) {
-          logger.error('webhook', 'Gmail read failed', { error: error.message });
-          const msg = 'שגיאה בקריאת המייל 🤔';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-      }
-
-      case 'gmail_send': {
-        const conn = await db.getCalendarConnection(userId, 'google');
-        if (!conn) {
-          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const credentials = JSON.parse(conn.credentials);
-          const emailTo = aiResponse.email_to;
-          const emailSubject = aiResponse.email_subject;
-          const emailBody = aiResponse.email_body;
-          if (!emailTo || !emailSubject || !emailBody) {
-            response = 'חסרים פרטים לשליחת המייל. צריך: כתובת, נושא ותוכן 🤔';
-            break;
-          }
-          await gmail.sendEmail(credentials, emailTo, emailSubject, emailBody);
-          break;
-        } catch (error) {
-          logger.error('webhook', 'Gmail send failed', { error: error.message });
-          response = 'שגיאה בשליחת המייל 🤔';
-        }
-        break;
-      }
-
-      case 'gmail_reply': {
-        const conn = await db.getCalendarConnection(userId, 'google');
-        if (!conn) {
-          const msg = 'צריך לחבר Google קודם — כתוב "חבר גוגל" 🔗';
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        try {
-          const credentials = JSON.parse(conn.credentials);
-          const emailSubject = aiResponse.email_subject;
-          const emailBody = aiResponse.email_body;
-          if (!emailSubject || !emailBody) {
-            response = 'חסרים פרטים לתגובה למייל. צריך: נושא המייל ותוכן התגובה 🤔';
-            break;
-          }
-          // Find the email to reply to
-          const emails = await gmail.listEmails(credentials, `subject:${emailSubject}`, 1);
-          if (emails.length === 0) {
-            response = `לא מצאתי מייל על "${emailSubject}" 📧`;
-            break;
-          }
-          await gmail.replyToEmail(credentials, emails[0].id, emailBody);
-          break;
-        } catch (error) {
-          logger.error('webhook', 'Gmail reply failed', { error: error.message });
-          response = 'שגיאה בתגובה למייל 🤔';
-        }
-        break;
-      }
-
-      case 'disconnect_calendar': {
-        const dcContent = content?.toLowerCase() || '';
-        const provider = dcContent.includes('google') ? 'google' : dcContent.includes('apple') ? 'apple' : null;
-        if (provider) {
-          await db.deleteCalendarConnection(userId, provider);
-          const msg = `✅ לוח השנה של ${provider === 'google' ? 'Google' : 'Apple'} נותק בהצלחה!`;
-          await whatsapp.sendMessage(chatId, msg);
-          return msg;
-        }
-        const msg = 'איזה לוח שנה לנתק? Google או Apple?';
-        await whatsapp.sendMessage(chatId, msg);
-        return msg;
       }
 
       case 'chat':
@@ -1135,7 +542,6 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
         logger.warn('webhook', 'Unknown action', { action });
     }
 
-    // Execute additional actions if present (e.g. task linked to an event)
     if (aiResponse.additional_actions && Array.isArray(aiResponse.additional_actions)) {
       for (const extra of aiResponse.additional_actions) {
         try {
@@ -1156,6 +562,55 @@ async function executeAction(userId, chatId, aiResponse, timezone = 'Asia/Jerusa
     const errMsg = 'אופס, משהו השתבש 😅 אפשר לנסות שוב?';
     await whatsapp.sendMessage(chatId, errMsg);
     return errMsg;
+  }
+}
+
+async function handlePdf(chatId, mediaUrl, userCaption, user) {
+  const axios = require('axios');
+  const pdfParse = require('pdf-parse');
+
+  try {
+    whatsapp.sendTyping(chatId).catch(() => {});
+    await whatsapp.sendMessage(chatId, '📄 קורא את הקובץ...');
+
+    const response = await axios.get(mediaUrl, {
+      responseType: 'arraybuffer',
+      auth: {
+        username: config.twilio.accountSid,
+        password: config.twilio.authToken,
+      },
+      timeout: 30000,
+    });
+
+    const data = await pdfParse(Buffer.from(response.data));
+    const pdfText = data.text.trim();
+
+    if (!pdfText) {
+      await whatsapp.sendMessage(chatId, 'לא הצלחתי לחלץ טקסט מהקובץ. אולי הוא סרוק כתמונה? 🤔');
+      return;
+    }
+
+    // Get conversation history for context
+    const history = await db.getRecentMessages(user.id, 6);
+
+    // Ask AI to handle the document
+    const aiReply = await claude.processDocumentMessage(
+      userCaption || '',
+      pdfText,
+      history,
+      user.timezone || 'Asia/Jerusalem'
+    );
+
+    // Save to conversation history so follow-up questions work
+    // Store a truncated version of the PDF text as the "user message"
+    const historyDoc = `[📄 PDF נשלח]\n${pdfText.substring(0, 2000)}${pdfText.length > 2000 ? '...' : ''}`;
+    await db.saveMessage(user.id, 'user', historyDoc);
+    await db.saveMessage(user.id, 'assistant', aiReply);
+
+    await whatsapp.sendMessage(chatId, aiReply);
+  } catch (error) {
+    logger.error('webhook', 'PDF handling failed', { error: error.message });
+    await whatsapp.sendMessage(chatId, 'לא הצלחתי לפתוח את הקובץ 😅 נסה שוב.');
   }
 }
 
